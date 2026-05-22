@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Test PDF</title>
+    <style>
+        :root {
+            --main-font: "Inter", "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            font-family: var(--main-font);
+            padding: 30px;
+            color: #1a1a1a;
+            max-width: 900px;
+            margin: 0 auto;
+            line-height: 1.6;
+            background: #fdfdfd;
+        }
+
+        .q-container {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            padding: 24px;
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .q-header {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 8px;
+            color: #0f172a;
+        }
+
+        .q-body {
+            font-size: 1.05rem;
+            margin-bottom: 20px;
+        }
+
+        .options-container {
+            display: grid;
+            gap: 12px;
+            margin-top: 15px;
+            grid-template-columns: 1fr;
+        }
+
+        .option-box {
+            background: #f8fafc;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .solution-box {
+            margin-top: 15px;
+            padding: 20px;
+            background: #fdfdfd;
+            border: 1px solid #e0e0e0;
+            border-left: 5px solid #22c55e;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+
+        .solution-header {
+            font-weight: 700;
+            color: #166534;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #dcfce7;
+            padding-bottom: 6px;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            color: #0f172a;
+            margin: 40px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #0f172a;
+            text-align: center;
+            page-break-before: always;
+        }
+
+        .solutions-section {
+            margin-top: 50px;
+        }
+
+        /* Reset some styles from main site so math & images look good locally */
+        img,
+        svg {
+            max-width: 100%;
+            height: auto;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .math-inline {
+            padding: 0 4px;
+        }
+
+        .math-block {
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        /* Controls at the top */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 15px 20px;
+            background: #eff6ff;
+            border-radius: 8px;
+            border: 1px solid #bfdbfe;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: #1e3a8a;
+        }
+
+        .print-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        }
+
+        .print-btn:hover {
+            background: #1d4ed8;
+        }
+
+        /* Print Specific Styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                max-width: 100%;
+                margin: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .q-container {
+                border-color: #ccc;
+                box-shadow: none;
+                margin-bottom: 20px;
+                padding: 15px;
+                break-inside: avoid;
+            }
+
+            .option-box {
+                break-inside: avoid;
+            }
+
+            .solution-box {
+                break-inside: avoid;
+                background: #fff;
+                border-left-color: #555;
+                border: 1px solid #eee;
+                border-left-width: 4px;
+            }
+        }
+    </style>
+
+    <!-- Load KaTeX CSS for pre-rendered MathJax/KaTeX elements from ExamGoal -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+
+    <!-- Load MathJax Core to re-render any dynamically missing expressions -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' },
+            startup: {
+                pageReady: () => {
+                    return MathJax.startup.defaultPageReady();
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- Load SheetJS locally to bypass Manifest V3 CSP restrictions -->
+    <script src="xlsx.full.min.js"></script>
+
+</head>
+
+<body>
+
+    <div class="controls no-print">
+        <h1>Extracted Questions</h1>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 12px; font-weight: 600; color: #1e3a8a;">Subject Name:</label>
+                <input type="text" id="subjectInput" value="Physics" placeholder="e.g. Physics" style="padding: 8px 12px; border: 1px solid #bfdbfe; border-radius: 6px; font-size: 14px; width: 150px; outline: none;">
+            </div>
+            <div style="display: flex; gap: 10px; align-self: flex-end;">
+                <button class="print-btn" onclick="window.print()">Export to PDF</button>
+                <button id="excelBtn" class="print-btn" style="background: #0ea5e9; box-shadow: 0 2px 4px rgba(14, 165, 233, 0.2);">Download Excel</button>
+                <button id="csvBtn" class="print-btn" style="background: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);">Download CSV</button>
+                <button id="jsonBtn" class="print-btn" style="background: #6366f1; box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);">Download JSON</button>
+                <button id="htmlBtn" class="print-btn" style="background: #f97316; box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);">Download HTML</button>
+                <button id="txtBtn" class="print-btn" style="background: #8b5cf6; box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);">Download TXT</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="content">Loading questions from storage...</div>
+
+    <script src="pdf_viewer.js"></script>
+</body>
+
+</html>

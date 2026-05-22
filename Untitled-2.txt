@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "firebase/app": "https://esm.sh/firebase@^11.0.0/app",
+    "firebase/auth": "https://esm.sh/firebase@^11.0.0/auth",
+    "firebase/": "https://esm.sh/firebase@^12.8.0/"
+  }
+}
+  </script>
+  <script type="module">import { injectIntoGlobalHook } from "/@react-refresh";
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;</script>
+
+  <script type="module" src="/@vite/client"></script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BatchWise - JEE Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico?v=1">
+  <link rel="icon" type="image/png" href="/favicon.png?v=1">
+  <link rel="apple-touch-icon" href="/favicon.png?v=1">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            gray: {
+              50: 'var(--color-gray-50)',
+              100: 'var(--color-gray-100)',
+              200: 'var(--color-gray-200)',
+              300: 'var(--color-gray-300)',
+              400: 'var(--color-gray-400)',
+              500: 'var(--color-gray-500)',
+              600: 'var(--color-gray-600)',
+              700: 'var(--color-gray-700)',
+              800: 'var(--color-gray-800)',
+              900: 'var(--color-gray-900)',
+              950: 'var(--color-gray-950)',
+            },
+            primary: {
+              50: 'var(--color-primary-50)',
+              100: 'var(--color-primary-100)',
+              200: 'var(--color-primary-200)',
+              300: 'var(--color-primary-300)',
+              400: 'var(--color-primary-400)',
+              500: 'var(--color-primary-500)',
+              600: 'var(--color-primary-600)',
+              700: 'var(--color-primary-700)',
+              800: 'var(--color-primary-800)',
+              900: 'var(--color-primary-900)',
+              950: 'var(--color-primary-950)',
+            },
+            blueprint: {
+              50: '#f0f6fc',
+              100: '#c9d1d9',
+              200: '#b1bac4',
+              300: '#8b949e',
+              400: '#6e7681',
+              500: '#484f58',
+              600: '#30363d',
+              700: '#21262d',
+              800: '#161b22',
+              900: '#0d1117',
+              950: '#010409',
+            },
+            tech: {
+              50: '#E6FFFA',
+              100: '#B2F5EA',
+              200: '#81E6D9',
+              300: '#4FD1C5',
+              400: '#38B2AC',
+              500: '#319795',
+              600: '#2C7A7B',
+              700: '#285E61',
+              800: '#234E52',
+              900: '#1D4044',
+              950: '#002528',
+            },
+            blue: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+              950: '#082f49',
+            },
+            slate: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617',
+            }
+          },
+          animation: {
+            'gradient': 'gradient 15s ease infinite',
+            'float': 'float 6s ease-in-out infinite',
+          },
+
+keyframes: {
+            gradient: {
+              '0%, 100%': { backgroundPosition: '0% 50%' },
+              '50%': { backgroundPosition: '100% 50%' },
+            },
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-10px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      /* Light Mode Palette (Slate / Indigo) */
+      --color-gray-50: #f8fafc;
+      --color-gray-100: #f1f5f9;
+      --color-gray-200: #e2e8f0;
+      --color-gray-300: #cbd5e1;
+      --color-gray-400: #94a3b8;
+      --color-gray-500: #64748b;
+      --color-gray-600: #475569;
+      --color-gray-700: #334155;
+      --color-gray-800: #1e293b;
+      --color-gray-900: #0f172a;
+      --color-gray-950: #020617;
+
+      --color-primary-50: #eef2ff;
+      --color-primary-100: #e0e7ff;
+      --color-primary-200: #c7d2fe;
+      --color-primary-300: #a5b4fc;
+      --color-primary-400: #818cf8;
+      --color-primary-500: #6366f1;
+      --color-primary-600: #4f46e5;
+      --color-primary-700: #4338ca;
+      --color-primary-800: #3730a3;
+      --color-primary-900: #312e81;
+      --color-primary-950: #1e1b4b;
+
+      --bg-body: #ffffff;
+      --bg-pattern: radial-gradient(circle at 50% 0%, #f1f5f9 0%, transparent 60%), radial-gradient(circle at 100% 100%, #f8fafc 0%, transparent 50%);
+      --text-body: #0f172a;
+    }
+
+    .dark {
+      /* Dark Mode Palette (Technical Blueprint / Deep Slate / Cyan) */
+      --color-gray-50: #f0f6fc;
+      --color-gray-100: #c9d1d9;
+      --color-gray-200: #b1bac4;
+      --color-gray-300: #8b949e;
+      --color-gray-400: #6e7681;
+      --color-gray-500: #484f58;
+      --color-gray-600: #30363d;
+      --color-gray-700: #21262d;
+      --color-gray-800: #161b22;
+      --color-gray-900: #0d1117;
+      --color-gray-950: #010409;
+
+      --color-primary-50: #E6FFFA;
+      --color-primary-100: #B2F5EA;
+      --color-primary-200: #81E6D9;
+      --color-primary-300: #4FD1C5;
+      --color-primary-400: #38B2AC;
+      --color-primary-500: #319795;
+      --color-primary-600: #2C7A7B;
+      --color-primary-700: #285E61;
+      --color-primary-800: #234E52;
+      --color-primary-900: #1D4044;
+      --color-primary-950: #002528;
+
+      --bg-body: #0d1117;
+      --bg-pattern: linear-gradient(rgba(48, 54, 61, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(48, 54, 61, 0.15) 1px, transparent 1px), radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.03), transparent 60%);
+      --text-body: #c9d1d9;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-body);
+      background-image: var(--bg-pattern);
+      color: var(--text-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    .display-font {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .glass {
+      background: rgba(20, 20, 25, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .glass-hover:hover {
+      background: rgba(30, 30, 40, 0.75);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+      transition: all 0.3s ease;
+    }
+
+    .login-gradient {
+      background: radial-gradient(circle at top right, rgba(124, 58, 237, 0.2), transparent),
+        radial-gradient(circle at bottom left, rgba(76, 29, 149, 0.15), transparent);
+    }
+
+    /* Global Selection Color */
+    ::selection {
+      background: rgba(79, 70, 229, 0.15);
+      color: #4338ca;
+    }
+  </style>
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      },
+      chtml: {
+        fontURL: 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2'
+      }
+    };
+  </script>
+  <script type="text/javascript" id="MathJax-script" async
+
+src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+    </script>
+<link rel="manifest" href="/manifest.webmanifest"></head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+<script id="vite-plugin-pwa:register-dev-sw" type="module">
+import registerDevSW from '/@vite-plugin-pwa/pwa-entry-point-loaded';
+registerDevSW();
+</script>
+</body>
+
+</html>

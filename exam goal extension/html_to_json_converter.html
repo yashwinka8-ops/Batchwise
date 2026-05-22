@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExamGoal HTML to JSON Converter</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --secondary: #ec4899;
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #818cf8, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 30px;
+            width: 100%;
+            max-width: 1000px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeInUp 0.8s ease-out;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .settings-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .input-group input, .input-group select {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .drop-zone {
+            border: 2px dashed rgba(99, 102, 241, 0.5);
+            border-radius: 16px;
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(15, 23, 42, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .drop-zone svg {
+            width: 60px;
+            height: 60px;
+            fill: var(--primary);
+            opacity: 0.8;
+            transition: transform 0.3s ease;
+        }
+        
+        .drop-zone:hover svg {
+            transform: scale(1.1);
+        }
+
+        .drop-zone p {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        
+        .drop-zone span {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .hidden-file-input {
+            display: none;
+        }
+
+        .preview-section {
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .json-preview {
+            background: #0f172a;
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            color: #a5b4fc;
+            overflow-y: auto;
+            max-height: 400px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>HTML &rarr; JSON</h1>
+        <p>Advanced Extractor & MathML to LaTeX Converter</p>
+    </div>
+
+    <div class="glass-panel">
+        <div class="settings-row">
+            <div class="input-group">
+                <label for="defaultSubject">Default Subject</label>
+                <input type="text" id="defaultSubject" value="Physics" placeholder="e.g. Physics">
+            </div>
+            <div class="input-group">
+                <label for="defaultDifficulty">Default Difficulty</label>
+                <select id="defaultDifficulty">
+                    <option value="Easy">Easy</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="Hard">Hard</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="startId">Starting ID Num</label>
+                <input type="number" id="startId" value="1001">
+            </div>
+        </div>
+
+        <div class="drop-zone" id="dropZone">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+            </svg>
+            <p>Drag & Drop your questions_XXX.html file here</p>
+            <span>or click to browse from device</span>
+            <input type="file" id="fileInput" class="hidden-file-input" accept=".html,.htm">
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <div class="preview-header">
+                <h3>Extracted JSON <span style="font-weight:400; color:var(--text-muted); font-size:0.9rem;" id="statsLabel"></span></h3>
+                <div class="action-buttons">
+                    <button class="btn btn-secondary" id="copyBtn" onclick="copyToClipboard()">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        Copy
+                    </button>
+                    <button class="btn" id="downloadBtn" onclick="downloadJSON()">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Download JSON
+                    </button>
+                </div>
+            </div>
+            <div class="json-preview" id="jsonPreview"></div>
+        </div>
+    </div>
+
+    <!-- The actual core conversion logic -->
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('previewSection');
+        const jsonPreview = document.getElementById('jsonPreview');
+        const statsLabel = document.getElementById('statsLabel');
+        let currentJSONData = [];
+
+        // Drag & Drop handlers
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                processFile(e.dataTransfer.files[0]);
+            }
+        });
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) processFile(e.target.files[0]);
+        });
+
+        function processFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const htmlContent = e.target.result;
+                convertHTMLtoJSON(htmlContent);
+            };
+            reader.readAsText(file);
+        }
+
+        // --- MATHML TO LATEX ENGINE ---
+        function mathml2latex(node) {
+            if (node.nodeType === Node.TEXT_NODE) return node.textContent.trim();
+            if (node.nodeType !== Node.ELEMENT_NODE) return "";
+
+            const tag = node.tagName.toLowerCase();
+            const childResults = Array.from(node.childNodes).map(mathml2latex);
+            const content = childResults.join('');
+
+            switch (tag) {
+                case 'math': return `$${content}$`;
+                case 'mi': return content;
+                case 'mn': return content;
+                case 'mo':
+                    const opMap = { '→':'\\rightarrow ', '¯':'\\bar ', '^':'\\hat ', '×':'\\times ', '±':'\\pm ', 'θ':'\\theta ', 'π':'\\pi ', 'α':'\\alpha ', 'β':'\\beta ', 'γ':'\\gamma ', '°':'^\\circ ', '·':'\\cdot ', '−':'-', '⊥':'\\perp ', '≥':'\\ge ', '≤':'\\le ', '≠':'\\neq ' };
+                    const res = opMap[content] || content;
+                    return res;
+                case 'msup': 
+                    return `${childResults[0]}^{${childResults[1]}} `;
+                case 'msub':
+                    return `${childResults[0]}_{${childResults[1]}} `;
+                case 'msubsup':
+                    return `${childResults[0]}_{${childResults[1]}}^{${childResults[2]}} `;
+                case 'mfrac':
+                    return `\\frac{${childResults[0]}}{${childResults[1]}} `;
+                case 'msqrt':
+                    return `\\sqrt{${content}} `;
+                case 'mroot':
+                    return `\\sqrt[${childResults[1]}]{${childResults[0]}} `;
+                case 'mrow': case 'mstyle': case 'merror': case 'mpadded': case 'mphantom': case 'semantics':
+                    return content + " ";
+                case 'text': case 'mtext':
+                    return ` \\text{${content}} `;
+                case 'mover':
+                    if (childResults[1].trim() === '\\rightarrow') return `\\vec{${childResults[0]}} `;
+                    if (childResults[1].trim() === '\\hat') return `\\hat{${childResults[0]}} `;
+                    if (childResults[1].trim() === '\\bar') return `\\bar{${childResults[0]}} `;
+                    return `\\overset{${childResults[1]}}{${childResults[0]}} `;
+                case 'munder':
+                    return `\\underset{${childResults[1]}}{${childResults[0]}}`;
+                default:
+                    return content;
+            }
+        }
+
+        // Convert the DOM node to plain text string containing raw LaTeX
+        function convertNodeToText(node, isSolution = false) {
+            if (!node) return "";
+            if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+            
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const tag = node.tagName.toLowerCase();
+                
+                if (tag === 'mjx-container') {
+                    const mathNode = node.querySelector('math');
+                    if (mathNode) return mathml2latex(mathNode);
+                    return "";
+                }
+                
+                if (tag === 'img') {
+                    if (!isSolution) return ""; // Skip embedding tags in Question Body
+                    const src = node.getAttribute('src');
+                    return src ? `<img src="${src}" style="max-width:100%; margin: 10px 0; display: block;" />` : "";
+                }
+                
+                if (tag === 'br') return "\n";
+                if (tag === 'li') return "\n• " + Array.from(node.childNodes).map(n => convertNodeToText(n, isSolution)).join('') + "\n";
+                
+                // Handle sub/sup naturally if they somehow are not converted to math
+                if (tag === 'sup') return `^{${Array.from(node.childNodes).map(n => convertNodeToText(n, isSolution)).join('')}}`;
+                if (tag === 'sub') return `_{${Array.from(node.childNodes).map(n => convertNodeToText(n, isSolution)).join('')}}`;
+
+                let innerText = Array.from(node.childNodes).map(n => convertNodeToText(n, isSolution)).join('');
+                if (tag === 'p' || tag === 'div') return "\n" + innerText + "\n";
+                return innerText;
+            }
+            return "";
+        }
+
+        // Normalize string, clear excess spacing, and aggressively sanitize smart quotes
+        function cleanString(str) {
+            if (!str) return "";
+            return str
+                .replace(/[\u2018\u2019]/g, "'")   // Smart single quotes
+                .replace(/[\u201C\u201D]/g, '"')   // Smart double quotes
+                .replace(/[\u2013\u2014]/g, "-")   // En and Em dashes
+                .replace(/\u00A0/g, " ")           // Non-breaking space
+                .replace(/[\u200B-\u200D\uFEFF]/g, "") // Zero-width spaces
+                .replace(/\n\s*\s/g, '\n')         // Trim trailing spaces on lines
+                .replace(/\n{3,}/g, '\n\n')        // Collapse excessive newlines
+                .trim(); 
+        }
+
+        function extractImage(containerEl) {
+            const imgEl = containerEl.querySelector('img');
+            if (imgEl && imgEl.hasAttribute('src')) {
+                return imgEl.getAttribute('src');
+            }
+            return "";
+        }
+
+        function convertHTMLtoJSON(htmlString) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, 'text/html');
+            const qContainers = doc.querySelectorAll('.q-container');
+            
+            const defSubject = document.getElementById('defaultSubject').value || 'Physics';
+            const defDifficulty = document.getElementById('defaultDifficulty').value || 'Medium';
+            let startId = parseInt(document.getElementById('startId').value) || 1001;
+
+            const results = [];
+
+            qContainers.forEach((qDiv, index) => {
+                const item = {};
+                
+                // Id
+                item.id = `q_${startId++}`;
+                
+                // Auto-detect Subject based on standard JEE 75 or 90-question test pattern
+                let currentSubject = defSubject;
+                let qCount = qContainers.length;
+                let qNum = index + 1;
+                
+                if (qCount >= 75) {
+                    let limit = (qCount >= 90) ? 30 : 25;
+                    let subj = "";
+                    let isSecB = false;
+                    
+                    if (qNum <= limit) {
+                        subj = "Physics";
+                        isSecB = qNum > 20;
+                    } else if (qNum <= limit * 2) {
+                        subj = "Chemistry";
+                        isSecB = qNum > limit + 20;
+                    } else {
+                        subj = "Mathematics";
+                        isSecB = qNum > (limit * 2) + 20;
+                    }
+                    currentSubject = subj;
+                    item.section = isSecB ? "B" : "A";
+                } else {
+                    currentSubject = defSubject;
+                    item.section = "A";
+                }
+
+                // Subject, Difficulty
+                item.subject = currentSubject;
+                item.difficulty = defDifficulty;
+
+                // Text & Question Image
+                const qBody = qDiv.querySelector('.q-body');
+                let rawText = qBody ? cleanString(convertNodeToText(qBody)) : "";
+                
+                // --- ROBUST SPLITTER: Detect A. B. C. or (A) (B) (C) merged in text ---
+                const optionPatterns = [
+                    /\s*([A-E])\.\s+/g,       // Matches "A. " or " A. "
+                    /\s*\(([A-E])\)\s+/g      // Matches "(A) " or " (A) "
+                ];
+                
+                let foundMatch = null;
+                for (const pattern of optionPatterns) {
+                    if (rawText.match(pattern)) {
+                        foundMatch = pattern;
+                        break;
+                    }
+                }
+
+                if (!qDiv.querySelector('.option-box') && foundMatch) {
+                    const parts = rawText.split(foundMatch);
+                    // parts[0] is the question text
+                    item.text = parts[0].trim();
+                    item.options = [];
+                    // Extract the text content, skip the captures [A, B, C...]
+                    for (let i = 2; i < parts.length; i += 2) {
+                        if (item.options.length < 4) {
+                            item.options.push(parts[i].split("Choose the correct answer")[0].trim());
+                        }
+                    }
+                    item.type = "MCQ";
+                } else {
+                    item.text = rawText.split("Choose the correct answer")[0].trim();
+                    item.options = [];
+                }
+                
+                item.image = qBody ? extractImage(qBody) : "";
+
+                // Options (Standard structure fallback)
+                const optsContainer = qDiv.querySelector('.options-container');
+                const optBoxes = optsContainer ? optsContainer.querySelectorAll('.option-box') : [];
+
+                if (optBoxes.length > 0) {
+                    item.options = [];
+                    item.type = "MCQ";
+                    optBoxes.forEach((optBox, idx) => {
+                        const qContent = optBox.querySelector('.question');
+                        if (qContent) {
+                            item.options.push(cleanString(convertNodeToText(qContent)));
+                        }
+                        if (optBox.querySelector('.bg-success-600\\/10\\!') || 
+                            optBox.innerHTML.includes('Correct answer') ||
+                            optBox.innerHTML.includes('text-success-600')) {
+                            item.correctIndex = idx;
+                        }
+                    });
+                } else if (!item.type || item.options.length === 0) {
+                    item.type = "Numerical";
+                    item.options = [];
+                }
+
+                // Solution
+                const solHeader = Array.from(doc.querySelectorAll('.solution-header')).find(
+                    h => h.textContent.trim() === `Solution for Question ${qNum}` || h.textContent.includes(`Question ${qNum}`)
+                );
+                const solBox = solHeader ? solHeader.closest('.solution-box') : null;
+                const solContent = solBox ? solBox.querySelector('.solution-content') : null;
+                
+                item.solution = solContent ? cleanString(convertNodeToText(solContent, true)) : (solBox ? cleanString(convertNodeToText(solBox, true)) : "");
+                item.solutionImage = solBox ? extractImage(solBox) : "";
+
+                results.push(item);
+            });
+
+            currentJSONData = results;
+            
+            // Output
+            statsLabel.innerText = `(${results.length} questions converted)`;
+            jsonPreview.innerText = JSON.stringify(results, null, 2);
+            dropZone.style.display = 'none';
+            previewSection.style.display = 'flex';
+        }
+
+        function copyToClipboard() {
+            navigator.clipboard.writeText(JSON.stringify(currentJSONData, null, 2));
+            const btn = document.getElementById('copyBtn');
+            const ogHtml = btn.innerHTML;
+            btn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg> Copied!`;
+            setTimeout(() => btn.innerHTML = ogHtml, 2000);
+        }
+
+        function downloadJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentJSONData, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `converted_questions_${Date.now()}.json`);
+            document.body.appendChild(dlAnchorElem);
+            dlAnchorElem.click();
+            document.body.removeChild(dlAnchorElem);
+        }
+    </script>
+</body>
+</html>

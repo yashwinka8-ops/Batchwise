@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "make-your-own-batch",
+    "Mocktest": "make-your-own-batch"
+  },
+  "targets": {},
+  "etags": {}
+}

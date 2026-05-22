@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to CBT CSV Cropper</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+        :root { --primary: #4f46e5; --bg: #f8fafc; --panel: #ffffff; --border: #e2e8f0; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; display: flex; height: 100vh; background: var(--bg); color: #1e293b; overflow: hidden; }
+        
+        /* Left Panel - PDF Viewer */
+        .workspace { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .toolbar { padding: 15px 20px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; gap: 15px; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); z-index: 10; }
+        .canvas-container { flex: 1; overflow: auto; position: relative; background: #cbd5e1; display: flex; justify-content: center; align-items: flex-start; padding: 20px; }
+        .canvas-wrapper { position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        canvas { display: block; }
+        #overlayCanvas { position: absolute; top: 0; left: 0; cursor: crosshair; }
+
+        /* Right Panel - Data Extractor */
+        .sidebar { width: 400px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; box-shadow: -2px 0 10px rgba(0,0,0,0.05); }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); background: #f1f5f9; }
+        .sidebar-header h2 { margin: 0 0 10px 0; font-size: 1.2rem; color: #0f172a; }
+        .sidebar-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Actions */
+        button { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #4338ca; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: #e0e7ff; }
+        .btn-danger { background: #ef4444; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-success { background: #10b981; width: 100%; padding: 12px; font-size: 1.1rem; }
+        .btn-success:hover { background: #059669; }
+
+        /* Current Question Form */
+        .crop-target { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 10px; text-align: center; color: #64748b; margin-bottom: 15px; position: relative; }
+        .crop-target.has-image { border: 2px solid #10b981; padding: 0; overflow: hidden; }
+        .crop-target img { max-width: 100%; display: block; }
+        .crop-target button { position: absolute; top: 5px; right: 5px; opacity: 0; transition: 0.2s; padding: 4px 8px; font-size: 12px;}
+        .crop-target:hover button { opacity: 1; }
+
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 0.9rem; font-weight: 600; color: #475569; }
+        input, select { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: inherit; }
+
+        .stats-badge { background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="workspace">
+        <div class="toolbar">
+            <input type="file" id="pdfInput" accept="application/pdf">
+            <div style="flex:1;"></div>
+            <button id="prevPage" disabled>◄ Prev</button>
+            <span style="font-weight: 600;">Page: <span id="pageNum">0</span> / <span id="pageCount">0</span></span>
+            <button id="nextPage" disabled>Next ►</button>
+            <div style="flex:1;"></div>
+            <button class="btn-outline" id="assignQBtn">Set as Question</button>
+            <button class="btn-outline" id="assignSBtn">Set as Solution</button>
+        </div>
+        <div class="canvas-container">
+            <div class="canvas-wrapper">
+                <canvas id="pdfCanvas"></canvas>
+                <canvas id="overlayCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Current Question Builder</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="stats-badge">Total Saved: <span id="savedCount">0</span></span>
+                <button id="exportCsvBtn" disabled>Export CSV</button>
+            </div>
+        </div>
+        <div class="sidebar-body">
+            
+            <p style="font-size: 0.85rem; color: #64748b; margin-top: 0;">1. Draw rectangle on PDF. <br>2. Click buttons below to assign crop.</p>
+            
+            <label>Question Image</label>
+            <div class="crop-target" id="qImageTarget">No Image Selected</div>
+
+            <label>Solution Image (Optional)</label>
+            <div class="crop-target" id="sImageTarget">No Solution Selected</div>
+
+            <div class="form-group">
+                <label>Subject</label>
+                <input type="text" id="qSubject" value="Physics">
+            </div>
+
+            <div class="form-group" style="flex-direction: row; gap: 15px;">
+                <div style="flex: 1;">
+                    <label>Correct Answer</label>
+                    <select id="qAnswer" style="width: 100%;">
+                        <option value="0">A</option>
+                        <option value="1">B</option>
+                        <option value="2">C</option>
+                        <option value="3">D</option>
+                        <option value="num">Numerical</option>
+                    </select>
+                </div>
+                <div style="flex: 1;">
+                    <label>Difficulty</label>
+                    <select id="qDifficulty" style="width: 100%;">
+                        <option value="Easy">Easy</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group" id="numAnswerBox" style="display: none;">
+                <label>Enter Numerical Answer</label>
+                <input type="text" id="qNumAnswer" placeholder="e.g. 25">
+            </div>
+
+            <br>
+            <button class="btn-success" id="saveQuestionBtn">Save & Next Question</button>
+        </div>
+    </div>
+
+    <script>
+        // PDF.js Setup
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        let pdfDoc = null, pageNum = 1, pageRendering = false, pageNumPending = null, scale = 2.0;
+        const canvas = document.getElementById('pdfCanvas');
+        const overlay = document.getElementById('overlayCanvas');
+        const ctx = canvas.getContext('2d');
+        const octx = overlay.getContext('2d');
+
+        // Drawing state
+        let isDrawing = false, startX = 0, startY = 0, currX = 0, currY = 0;
+        let cropRect = null;
+
+        // Data Storage
+        let extractedQuestions = [];
+        let currentData = { image: null, solutionImage: null };
+
+        // Scale down coordinate from mouse to canvas internal resolution
+        function getMousePos(evt) {
+            const rect = overlay.getBoundingClientRect();
+            const scaleX = overlay.width / rect.width;
+            const scaleY = overlay.height / rect.height;
+            return {
+                x: (evt.clientX - rect.left) * scaleX,
+                y: (evt.clientY - rect.top) * scaleY
+            };
+        }
+
+        // Render Page
+        function renderPage(num) {
+            pageRendering = true;
+            pdfDoc.getPage(num).then(function(page) {
+                const viewport = page.getViewport({scale: scale});
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                overlay.height = viewport.height;
+                overlay.width = viewport.width;
+
+                const renderContext = { canvasContext: ctx, viewport: viewport };
+                const renderTask = page.render(renderContext);
+
+                renderTask.promise.then(function() {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
+            document.getElementById('pageNum').textContent = num;
+            
+            document.getElementById('prevPage').disabled = num <= 1;
+            document.getElementById('nextPage').disabled = num >= pdfDoc.numPages;
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) { pageNumPending = num; } 
+            else { renderPage(num); }
+        }
+
+        // Load PDF
+        document.getElementById('pdfInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file.type !== 'application/pdf') return alert('Not a valid PDF');
+            
+            const fileReader = new FileReader();
+            fileReader.onload = function() {
+                const typedarray = new Uint8Array(this.result);
+                pdfjsLib.getDocument(typedarray).promise.then(doc => {
+                    pdfDoc = doc;
+                    document.getElementById('pageCount').textContent = pdfDoc.numPages;
+                    pageNum = 1;
+                    renderPage(pageNum);
+                });
+            };
+            fileReader.readAsArrayBuffer(file);
+        });
+
+        document.getElementById('prevPage').addEventListener('click', () => { if (pageNum <= 1) return; pageNum--; queueRenderPage(pageNum); clearOverlay(); });
+        document.getElementById('nextPage').addEventListener('click', () => { if (pageNum >= pdfDoc.numPages) return; pageNum++; queueRenderPage(pageNum); clearOverlay(); });
+
+        // Drawing Logic
+        overlay.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const pos = getMousePos(e);
+            startX = pos.x; startY = pos.y;
+        });
+
+        overlay.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const pos = getMousePos(e);
+            currX = pos.x; currY = pos.y;
+            drawRect();
+        });
+
+        overlay.addEventListener('mouseup', () => {
+            isDrawing = false;
+            cropRect = {
+                x: Math.min(startX, currX),
+                y: Math.min(startY, currY),
+                w: Math.abs(currX - startX),
+                h: Math.abs(currY - startY)
+            };
+        });
+
+        function drawRect() {
+            octx.clearRect(0, 0, overlay.width, overlay.height);
+            octx.fillStyle = 'rgba(79, 70, 229, 0.2)';
+            octx.strokeStyle = '#4f46e5';
+            octx.lineWidth = 2;
+            const x = Math.min(startX, currX);
+            const y = Math.min(startY, currY);
+            const w = Math.abs(currX - startX);
+            const h = Math.abs(currY - startY);
+            octx.fillRect(x, y, w, h);
+            octx.strokeRect(x, y, w, h);
+        }
+
+        function clearOverlay() {
+            octx.clearRect(0, 0, overlay.width, overlay.height);
+            cropRect = null;
+        }
+
+        function getCroppedBase64() {
+            if (!cropRect || cropRect.w < 10 || cropRect.h < 10) return alert('Please draw a valid rectangle first.');
+            
+            // Create temporary canvas to hold crop
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = cropRect.w;
+            tempCanvas.height = cropRect.h;
+            const tctx = tempCanvas.getContext('2d');
+            
+            // Draw from original PDF canvas
+            tctx.drawImage(canvas, cropRect.x, cropRect.y, cropRect.w, cropRect.h, 0, 0, cropRect.w, cropRect.h);
+            return tempCanvas.toDataURL('image/jpeg', 0.85); // JPEG is smaller than PNG
+        }
+
+        function setTargetImage(type) {
+            const dataUrl = getCroppedBase64();
+            if (!dataUrl) return;
+
+            const targetDiv = type === 'Q' ? document.getElementById('qImageTarget') : document.getElementById('sImageTarget');
+            targetDiv.innerHTML = `<img src="${dataUrl}"><button class="btn-danger" onclick="removeImage('${type}')">X</button>`;
+            targetDiv.classList.add('has-image');
+            
+            if (type === 'Q') currentData.image = dataUrl;
+            if (type === 'S') currentData.solutionImage = dataUrl;
+            clearOverlay();
+        }
+
+        window.removeImage = function(type) {
+            if(type === 'Q') { currentData.image = null; document.getElementById('qImageTarget').innerHTML = "No Image Selected"; document.getElementById('qImageTarget').classList.remove('has-image');}
+            if(type === 'S') { currentData.solutionImage = null; document.getElementById('sImageTarget').innerHTML = "No Solution Selected"; document.getElementById('sImageTarget').classList.remove('has-image');}
+        }
+
+        document.getElementById('assignQBtn').addEventListener('click', () => setTargetImage('Q'));
+        document.getElementById('assignSBtn').addEventListener('click', () => setTargetImage('S'));
+
+        document.getElementById('qAnswer').addEventListener('change', (e) => {
+            document.getElementById('numAnswerBox').style.display = e.target.value === 'num' ? 'flex' : 'none';
+        });
+
+        // Save Question
+        document.getElementById('saveQuestionBtn').addEventListener('click', () => {
+            if (!currentData.image) return alert("You must crop a Question image first!");
+
+            const ansVal = document.getElementById('qAnswer').value;
+            const diff = document.getElementById('qDifficulty').value;
+            const subj = document.getElementById('qSubject').value;
+            
+            let finalOutput = {
+                image: currentData.image,
+                solution: currentData.solutionImage ? `<img src="${currentData.solutionImage}" style="max-width:100%;">` : "",
+                difficulty: diff,
+                subject: subj,
+                isNum: ansVal === 'num'
+            };
+
+            if (ansVal === 'num') {
+                finalOutput.correctIndex = document.getElementById('qNumAnswer').value;
+            } else {
+                finalOutput.correctIndex = ansVal;
+            }
+
+            extractedQuestions.push(finalOutput);
+            document.getElementById('savedCount').textContent = extractedQuestions.length;
+            document.getElementById('exportCsvBtn').disabled = false;
+
+            // Reset UI
+            removeImage('Q'); removeImage('S');
+            document.getElementById('qNumAnswer').value = "";
+        });
+
+        // Export CSV
+        document.getElementById('exportCsvBtn').addEventListener('click', () => {
+            if (extractedQuestions.length === 0) return;
+            
+            let csv = "text,subject,optA,optB,optC,optD,correctIndex,solution,difficulty,image\n";
+            
+            extractedQuestions.forEach(q => {
+                const escapeCsv = (str) => '"' + String(str).replace(/"/g, '""') + '"';
+                
+                let text = "See Image"; // Usually CBT platforms will put "See Image" if text is missing
+                let opt = ["", "", "", ""];
+                
+                csv += `${escapeCsv(text)},${escapeCsv(q.subject)},${escapeCsv(opt[0])},${escapeCsv(opt[1])},${escapeCsv(opt[2])},${escapeCsv(opt[3])},${escapeCsv(q.correctIndex)},${escapeCsv(q.solution)},${escapeCsv(q.difficulty)},${escapeCsv(q.image)}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `pdf_extracted_${new Date().getTime()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+    </script>
+</body>
+</html>

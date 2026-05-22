@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      width: 320px;
+      padding: 15px;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      text-align: center;
+    }
+
+    h3 {
+      margin-top: 0;
+      color: #333;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0056b3;
+    }
+
+    .btn-secondary {
+      background: #e2e6ea;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #dae0e5;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-size: 13px;
+      color: #666;
+      font-style: italic;
+      min-height: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <h3>ExamGoal PDF Scraper</h3>
+  <div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+    <label for="limitInput" style="font-size: 14px; color: #555; font-weight: 500;">Max Questions:</label>
+    <input type="number" id="limitInput" value="300" min="1" max="999" 
+           style="width: 65px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; text-align: center;">
+  </div>
+  <button id="extractAllBtn" class="btn btn-primary">Start Auto-Extract ALL</button>
+  <button id="extractSingleBtn" class="btn btn-secondary">Extract Current Question</button>
+  <button id="viewLastBtn" class="btn btn-secondary" style="border: 1px solid #007bff; color: #007bff; background: white;">View Last Extraction</button>
+  <div id="status">Ready to extract! Go to a Mock Test page first.</div>
+  <script src="popup.js"></script>
+</body>
+
+</html>
