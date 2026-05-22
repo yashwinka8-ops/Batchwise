@@ -1,20 +1,33 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
 # Batchwise
 
-This contains everything you need to run your app locally.
+**Batchwise** is an intelligent, AI-powered skill-learning and scheduling platform designed to optimize study workflows, generate quizzes, and provide ultra-fast inference for course auditing.
 
-View your app in AI Studio: https://ai.studio/apps/drive/105T-jiMeXrxzqq6bpc1gircmKNzWcecG
+## Features
+- **AI-Powered Auto-Scheduling**: Interleaved and sequential study strategies.
+- **Dynamic Quiz Generation**: Tailored mock tests and interactive learning interfaces.
+- **Smart Analytics**: Track goals, momentum, and daily streaks.
+- **Robust Tech Stack**: Built using React, Vite, Firebase, and Groq for blazing-fast AI inference.
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:**  Node.js (v16+)
 
+1. Clone the repository and install dependencies:
+   ```bash
+   npm install
+   ```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+2. Configure environment variables:
+   Create a `.env.local` file in the root directory and add your API keys:
+   ```env
+   VITE_GROQ_API_KEY=your_groq_api_key_here
+   # Add other required environment variables (e.g., Firebase config)
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+## Contributing
+Contributions are welcome! Please feel free to submit a Pull Request.
