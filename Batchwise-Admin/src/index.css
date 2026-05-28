@@ -2,3 +2,20 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Dynamic Theme-specific Logo visibility classes */
+.logo-dark-theme {
+  display: none !important;
+}
+.logo-light-theme {
+  display: block !important;
+}
+
+html.dark .logo-dark-theme,
+html.night .logo-dark-theme {
+  display: block !important;
+}
+html.dark .logo-light-theme,
+html.night .logo-light-theme {
+  display: none !important;
+}

@@ -47,24 +47,24 @@ const GoalDashboard: React.FC<GoalDashboardProps> = ({ userId, completedCount })
           <h3 className="text-sm font-bold text-white tracking-tight">Learning Goals</h3>
           <p className="text-[10px] text-slate-500 font-medium mt-0.5">Track your progress milestones</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="size-8 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-500 hover:bg-purple-500/20 transition-all flex items-center justify-center">
+        <button onClick={() => setShowForm(!showForm)} className="size-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20 transition-all flex items-center justify-center">
           <PlusIcon className="w-4 h-4" />
         </button>
       </div>
 
       {showForm && (
         <div className="mb-5 p-4 bg-white/[0.03] border border-white/10 rounded-xl space-y-3">
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Complete 5 lectures" className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500/40" />
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Complete 5 lectures" className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/40" />
           <div className="flex gap-3">
-            <input type="number" value={target} onChange={e => setTarget(Math.max(1, parseInt(e.target.value) || 1))} className="w-20 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-purple-500/40" />
-            <select value={type} onChange={e => setType(e.target.value as any)} className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500/40">
+            <input type="number" value={target} onChange={e => setTarget(Math.max(1, parseInt(e.target.value) || 1))} className="w-20 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-emerald-500/40" />
+            <select value={type} onChange={e => setType(e.target.value as any)} className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500/40">
               <option value="weekly">This Week</option>
               <option value="monthly">This Month</option>
               <option value="custom">Ongoing</option>
             </select>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleCreate} className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-purple-500 transition-all">Set Goal</button>
+            <button onClick={handleCreate} className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-emerald-500 transition-all">Set Goal</button>
             <button onClick={() => setShowForm(false)} className="px-4 py-2 text-[10px] text-slate-500 hover:text-white transition-all">Cancel</button>
           </div>
         </div>
@@ -89,7 +89,7 @@ const GoalDashboard: React.FC<GoalDashboardProps> = ({ userId, completedCount })
                 </div>
               </div>
               <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500 bg-purple-500" style={{ width: `${Math.round(progress * 100)}%` }} />
+                <div className="h-full rounded-full transition-all duration-500 bg-emerald-500" style={{ width: `${Math.round(progress * 100)}%` }} />
               </div>
               <span className="text-[8px] text-slate-600 font-medium uppercase tracking-wider">{goal.type === 'weekly' ? 'This Week' : goal.type === 'monthly' ? 'This Month' : 'Ongoing'}</span>
             </div>

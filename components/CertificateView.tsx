@@ -50,8 +50,9 @@ const CertificateView: React.FC<CertificateViewProps> = ({ batch, userId, userNa
         completedAt: Date.now(),
       });
       setPrintReady(true);
-    } catch {
-      alert('Failed to generate certificate');
+    } catch (error) {
+      console.error('Certificate generation error:', error);
+      alert('Failed to generate certificate: ' + (error as Error).message);
     }
     setGenerating(false);
   };
@@ -75,151 +76,148 @@ const CertificateView: React.FC<CertificateViewProps> = ({ batch, userId, userNa
           * { margin:0; padding:0; box-sizing:border-box; }
           body {
             display:flex; align-items:center; justify-content:center;
-            min-height:100vh; background:#1a1a2e; font-family:'Inter',sans-serif;
+            min-height:100vh; background:#f1f5f9; font-family:'Inter',sans-serif;
             -webkit-print-color-adjust:exact; print-color-adjust:exact;
           }
           .cert-wrapper {
             width:900px; padding:40px; position:relative;
           }
           .certificate {
-            background:linear-gradient(145deg,#0f0f1a 0%,#1a0f2e 40%,#0f172a 100%);
-            border:2px solid rgba(218,11,11,0.3);
-            border-radius:16px; padding:60px 70px;
+            background:#ffffff;
+            border:1px solid #e2e8f0;
+            border-radius:12px; padding:60px 70px;
             position:relative; overflow:hidden;
-            box-shadow:
-              0 0 80px rgba(218,11,11,0.08),
-              0 0 160px rgba(218,11,11,0.04),
-              inset 0 1px 0 rgba(255,255,255,0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
           }
           .certificate::before {
             content:''; position:absolute; inset:0;
             background:
-              radial-gradient(ellipse at 30% 20%, rgba(218,11,11,0.06) 0%, transparent 60%),
-              radial-gradient(ellipse at 70% 80%, rgba(139,0,0,0.04) 0%, transparent 50%);
+              radial-gradient(circle at 100% 0%, rgba(212,175,55,0.06) 0%, transparent 40%),
+              radial-gradient(circle at 0% 100%, rgba(212,175,55,0.06) 0%, transparent 40%);
             pointer-events:none;
           }
           .border-frame {
             position:absolute; inset:20px;
-            border:1px solid rgba(218,11,11,0.15);
-            border-radius:8px; pointer-events:none;
+            border:2px solid #d4af37;
+            border-radius:4px; pointer-events:none;
+            opacity: 0.7;
           }
           .border-frame-inner {
-            position:absolute; inset:24px;
-            border:1px solid rgba(218,11,11,0.08);
-            border-radius:6px; pointer-events:none;
+            position:absolute; inset:26px;
+            border:1px solid #d4af37;
+            border-radius:2px; pointer-events:none;
+            opacity: 0.3;
           }
           .corner {
-            position:absolute; width:30px; height:30px; pointer-events:none;
+            position:absolute; width:40px; height:40px; pointer-events:none;
           }
-          .corner-tl { top:24px; left:24px; border-top:2px solid rgba(218,11,11,0.3); border-left:2px solid rgba(218,11,11,0.3); border-radius:2px 0 0 0; }
-          .corner-tr { top:24px; right:24px; border-top:2px solid rgba(218,11,11,0.3); border-right:2px solid rgba(218,11,11,0.3); border-radius:0 2px 0 0; }
-          .corner-bl { bottom:24px; left:24px; border-bottom:2px solid rgba(218,11,11,0.3); border-left:2px solid rgba(218,11,11,0.3); border-radius:0 0 0 2px; }
-          .corner-br { bottom:24px; right:24px; border-bottom:2px solid rgba(218,11,11,0.3); border-right:2px solid rgba(218,11,11,0.3); border-radius:0 0 2px 0; }
+          .corner-tl { top:16px; left:16px; border-top:3px solid #d4af37; border-left:3px solid #d4af37; }
+          .corner-tr { top:16px; right:16px; border-top:3px solid #d4af37; border-right:3px solid #d4af37; }
+          .corner-bl { bottom:16px; left:16px; border-bottom:3px solid #d4af37; border-left:3px solid #d4af37; }
+          .corner-br { bottom:16px; right:16px; border-bottom:3px solid #d4af37; border-right:3px solid #d4af37; }
           .watermark {
             position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-            font-size:140px; font-weight:900; color:rgba(218,11,11,0.02);
+            font-size:140px; font-weight:900; color:rgba(0,0,0,0.02);
             letter-spacing:8px; white-space:nowrap; pointer-events:none;
             font-family: 'Inter', sans-serif;
           }
           .logo-area { text-align:center; margin-bottom:28px; position:relative; z-index:1; }
-          .logo-area svg { width:56px; height:56px; display:inline-block; }
-          .logo-text { font-size:20px; font-weight:900; color:#f1f5f9; letter-spacing:6px; text-transform:uppercase; margin-top:6px; }
+          .logo-area svg { width:56px; height:56px; display:inline-block; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+          .logo-text { font-size:20px; font-weight:900; color:#0f172a; letter-spacing:6px; text-transform:uppercase; margin-top:6px; }
           .logo-text span { color:#da0b0b; }
           .divider {
             width:180px; height:2px;
-            background:linear-gradient(90deg,transparent,rgba(218,11,11,0.5),transparent);
+            background:linear-gradient(90deg,transparent,#d4af37,transparent);
             margin:12px auto 20px;
           }
           h1 {
             font-family:'Playfair Display',serif;
-            font-size:44px; font-weight:900;
-            background:linear-gradient(135deg,#da0b0b 0%,#f43f5e 50%,#a78bfa 100%);
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-            background-clip:text;
-            text-align:center; letter-spacing:2px; margin-bottom:4px;
+            font-size:48px; font-weight:900;
+            color:#0f172a;
+            text-align:center; letter-spacing:4px; margin-bottom:4px;
             position:relative; z-index:1;
           }
           .subtitle {
-            text-align:center; font-size:13px; font-weight:500;
-            color:#64748b; letter-spacing:8px; text-transform:uppercase;
+            text-align:center; font-size:14px; font-weight:600;
+            color:#64748b; letter-spacing:10px; text-transform:uppercase;
             position:relative; z-index:1; margin-bottom:32px;
           }
           .presented {
-            text-align:center; font-size:13px; color:#94a3b8; font-weight:300;
-            position:relative; z-index:1; margin-bottom:4px;
+            text-align:center; font-size:16px; color:#475569; font-weight:400;
+            position:relative; z-index:1; margin-bottom:12px;
             font-family:'Cormorant Garamond',serif; font-style:italic;
           }
           .recipient-name {
             text-align:center; font-family:'Playfair Display',serif;
-            font-size:40px; font-weight:700; color:#f1f5f9;
-            position:relative; z-index:1; margin-bottom:4px;
-            text-shadow:0 0 40px rgba(218,11,11,0.1);
+            font-size:44px; font-weight:700; color:#1e293b;
+            position:relative; z-index:1; margin-bottom:8px;
           }
           .recipient-underline {
-            width:300px; height:1px;
-            background:linear-gradient(90deg,transparent,rgba(241,245,249,0.2),transparent);
-            margin:0 auto 16px;
+            width:400px; height:1px;
+            background:linear-gradient(90deg,transparent,#94a3b8,transparent);
+            margin:0 auto 20px;
           }
           .for-text {
-            text-align:center; font-size:13px; color:#94a3b8; font-weight:300;
-            position:relative; z-index:1; margin-bottom:4px;
+            text-align:center; font-size:16px; color:#475569; font-weight:400;
+            position:relative; z-index:1; margin-bottom:12px;
             font-family:'Cormorant Garamond',serif; font-style:italic;
           }
           .course-name {
-            text-align:center; font-size:24px; font-weight:800; color:#e2e8f0;
-            position:relative; z-index:1; margin-bottom:4px;
+            text-align:center; font-size:26px; font-weight:800; color:#0f172a;
+            position:relative; z-index:1; margin-bottom:8px;
             letter-spacing:0.5px;
           }
           .course-label {
-            text-align:center; font-size:11px; font-weight:600; color:#64748b;
-            text-transform:uppercase; letter-spacing:3px; position:relative; z-index:1; margin-bottom:28px;
+            text-align:center; font-size:12px; font-weight:700; color:#64748b;
+            text-transform:uppercase; letter-spacing:4px; position:relative; z-index:1; margin-bottom:32px;
           }
           .divider2 {
-            width:120px; height:1px;
-            background:linear-gradient(90deg,transparent,rgba(218,11,11,0.3),transparent);
-            margin:0 auto 24px;
+            width:120px; height:2px;
+            background:linear-gradient(90deg,transparent,#d4af37,transparent);
+            margin:0 auto 28px;
           }
           .details {
-            display:flex; justify-content:center; gap:48px;
-            position:relative; z-index:1; margin-bottom:28px;
+            display:flex; justify-content:center; gap:64px;
+            position:relative; z-index:1; margin-bottom:32px;
           }
           .detail-item { text-align:center; }
-          .detail-label { font-size:9px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:2px; margin-bottom:4px; }
-          .detail-value { font-size:13px; font-weight:600; color:#cbd5e1; }
+          .detail-label { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px; }
+          .detail-value { font-size:14px; font-weight:600; color:#334155; }
           .seal {
-            width:72px; height:72px; margin:0 auto 20px;
-            border:3px solid rgba(218,11,11,0.3);
+            width:80px; height:80px; margin:0 auto 24px;
+            border:2px dashed #d4af37;
             border-radius:50%; display:flex; align-items:center; justify-content:center;
             position:relative; z-index:1;
-            background:radial-gradient(circle,rgba(218,11,11,0.06),transparent);
+            background:#fffaf0;
+            box-shadow: 0 4px 6px rgba(212,175,55,0.1);
           }
           .seal-inner {
-            width:58px; height:58px; border-radius:50%;
-            border:1.5px solid rgba(218,11,11,0.2);
+            width:64px; height:64px; border-radius:50%;
+            border:2px solid #d4af37;
             display:flex; align-items:center; justify-content:center;
-            font-size:22px;
+            font-size:28px; color: #d4af37; font-weight: bold;
           }
           .signatures {
-            display:flex; justify-content:center; gap:64px;
-            position:relative; z-index:1; margin-bottom:20px;
+            display:flex; justify-content:center; gap:80px;
+            position:relative; z-index:1; margin-bottom:24px;
           }
-          .sig-item { text-align:center; min-width:160px; }
-          .sig-line { width:140px; height:1px; background:rgba(148,163,184,0.3); margin:0 auto 8px; }
-          .sig-role { font-size:9px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:2px; }
-          .sig-name { font-size:11px; color:#94a3b8; font-family:'Cormorant Garamond',serif; font-style:italic; }
+          .sig-item { text-align:center; min-width:180px; }
+          .sig-line { width:160px; height:1px; background:#94a3b8; margin:0 auto 10px; }
+          .sig-role { font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:2px; }
+          .sig-name { font-size:14px; color:#475569; font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; }
           .footer-line {
             width:100%; height:1px;
-            background:linear-gradient(90deg,transparent,rgba(218,11,11,0.15),transparent);
+            background:linear-gradient(90deg,transparent,#e2e8f0,transparent);
             margin:0 auto 16px;
           }
           .footer-text {
-            text-align:center; font-size:10px; color:#475569;
-            letter-spacing:4px; text-transform:uppercase; font-weight:500;
+            text-align:center; font-size:11px; color:#64748b;
+            letter-spacing:4px; text-transform:uppercase; font-weight:600;
             position:relative; z-index:1;
           }
-          .footer-text span { color:#da0b0b; font-weight:700; }
+          .footer-text span { color:#da0b0b; font-weight:800; }
           .cert-number {
-            text-align:center; font-size:8px; color:#334155;
+            text-align:center; font-size:10px; color:#94a3b8;
             margin-top:8px; letter-spacing:2px; font-family:monospace;
           }
           @media print {
@@ -227,11 +225,6 @@ const CertificateView: React.FC<CertificateViewProps> = ({ batch, userId, userNa
             .cert-wrapper { padding:0; }
             .certificate { box-shadow:none; border-color:rgba(0,0,0,0.15); }
             .certificate::before { display:none; }
-            .recipient-name { color:#1a1a2e; }
-            .course-name { color:#1a1a2e; }
-            .logo-text { color:#1a1a2e; }
-            .seal { border-color:rgba(218,11,11,0.4); }
-            .detail-value { color:#334155; }
           }
         </style>
       </head>

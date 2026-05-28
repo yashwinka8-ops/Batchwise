@@ -18,6 +18,7 @@ interface LectureViewProps {
     onToggleComplete: (lectureId: string) => void;
     onBack: () => void;
     genre?: string;
+    onYoutubeImport?: () => void;
 }
 
 const FloatingWatermark = ({ text }: { text: string }) => {
@@ -151,7 +152,8 @@ const LectureView: React.FC<LectureViewProps> = ({
     onLectureNavigate,
     onToggleComplete,
     onBack,
-    genre
+    genre,
+    onYoutubeImport
 }) => {
     const [search, setSearch] = useState('');
     const [isPlaying, setIsPlaying] = useState(false);
@@ -171,6 +173,11 @@ const LectureView: React.FC<LectureViewProps> = ({
     const containerRef = React.useRef<HTMLDivElement>(null);
     const controlsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
     const trackingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    // Video progress persistence states
+    const [resumeTime, setResumeTime] = useState(0);
+    const [showResumeToast, setShowResumeToast] = useState(false);
+    const resumeToastTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const [ytDescription, setYtDescription] = useState<string>('');
     const [showDescription, setShowDescription] = useState(false);
@@ -234,9 +241,13 @@ const LectureView: React.FC<LectureViewProps> = ({
         setCurrentQuality('medium');
         setYtDescription('');
         setShowPractice(false);
+        setShowResumeToast(false);
         
         if (trackingIntervalRef.current) {
             clearInterval(trackingIntervalRef.current);
+        }
+        if (resumeToastTimeoutRef.current) {
+            clearTimeout(resumeToastTimeoutRef.current);
         }
 
         // Fetch actual YouTube description
@@ -274,6 +285,9 @@ const LectureView: React.FC<LectureViewProps> = ({
         return () => {
             if (playerRef.current) {
                 playerRef.current.destroy();
+            }
+            if (resumeToastTimeoutRef.current) {
+                clearTimeout(resumeToastTimeoutRef.current);
             }
         };
     }, [lecture.id]);
@@ -337,7 +351,8 @@ const LectureView: React.FC<LectureViewProps> = ({
 
     const onPlayerReady = (event: any) => {
         setIsPlayerReady(true);
-        setDuration(event.target.getDuration());
+        const videoDuration = event.target.getDuration();
+        setDuration(videoDuration);
         
         // Force default quality to 360p if possible, else 240p
         const levels = event.target.getAvailableQualityLevels();
@@ -349,6 +364,23 @@ const LectureView: React.FC<LectureViewProps> = ({
         
         setAvailableQualities(levels);
         setCurrentQuality(event.target.getPlaybackQuality());
+
+        // Check for saved progress
+        const savedTimeStr = localStorage.getItem(`batchwise_progress_${lecture.id}`);
+        if (savedTimeStr) {
+            const savedTime = parseFloat(savedTimeStr);
+            if (savedTime > 3 && savedTime < videoDuration - 15) {
+                event.target.seekTo(savedTime, true);
+                setCurrentTime(savedTime);
+                setResumeTime(savedTime);
+                setShowResumeToast(true);
+                
+                if (resumeToastTimeoutRef.current) clearTimeout(resumeToastTimeoutRef.current);
+                resumeToastTimeoutRef.current = setTimeout(() => {
+                    setShowResumeToast(false);
+                }, 6000);
+            }
+        }
     };
 
     const onPlayerStateChange = (event: any) => {
@@ -370,7 +402,16 @@ const LectureView: React.FC<LectureViewProps> = ({
         if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
         trackingIntervalRef.current = setInterval(() => {
             if (playerRef.current && playerRef.current.getCurrentTime) {
-                setCurrentTime(playerRef.current.getCurrentTime());
+                const time = playerRef.current.getCurrentTime();
+                setCurrentTime(time);
+                
+                // Save watch progress to localStorage
+                const videoDuration = playerRef.current.getDuration ? playerRef.current.getDuration() : duration;
+                if (videoDuration > 0 && time >= videoDuration - 15) {
+                    localStorage.removeItem(`batchwise_progress_${lecture.id}`);
+                } else if (time > 2) {
+                    localStorage.setItem(`batchwise_progress_${lecture.id}`, time.toString());
+                }
             }
         }, 500);
     };
@@ -380,6 +421,15 @@ const LectureView: React.FC<LectureViewProps> = ({
         const newTime = Math.max(0, Math.min(duration, currentTime + seconds));
         playerRef.current.seekTo(newTime);
         setCurrentTime(newTime);
+    };
+
+    const handleRestartVideo = () => {
+        if (playerRef.current && playerRef.current.seekTo) {
+            playerRef.current.seekTo(0);
+            setCurrentTime(0);
+            localStorage.removeItem(`batchwise_progress_${lecture.id}`);
+            setShowResumeToast(false);
+        }
     };
 
 
@@ -661,6 +711,39 @@ const LectureView: React.FC<LectureViewProps> = ({
                                 id="cipher-player-frame" 
                                 className="w-full h-full relative z-0 scale-[1.01]"
                             />
+
+                            {/* Premium Resume Toast */}
+                            {showResumeToast && (
+                                <div className="absolute top-4 left-4 z-50 animate-in fade-in slide-in-from-top-4 duration-500 max-w-[280px] sm:max-w-md pointer-events-auto">
+                                    <div className="bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-4 shadow-2xl">
+                                        <div className="flex items-center gap-3">
+                                            <div className="size-8 sm:size-10 rounded-xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-500">
+                                                <span className="material-symbols-outlined text-sm sm:text-base animate-pulse">play_circle</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-black text-white/50 uppercase tracking-widest leading-none mb-1">Welcome Back</span>
+                                                <span className="text-xs font-bold text-white leading-tight">
+                                                    Resumed from {formatTime(resumeTime)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleRestartVideo(); }}
+                                                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-[9px] font-black text-white uppercase tracking-widest border border-white/5 hover:border-white/10 transition-all cursor-pointer pointer-events-auto"
+                                            >
+                                                Restart
+                                            </button>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); setShowResumeToast(false); }}
+                                                className="text-white/40 hover:text-white transition-colors cursor-pointer pointer-events-auto"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">close</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Center Action Overlay */}
                             <div className={`absolute inset-0 z-20 flex items-center justify-center md:gap-8 gap-4 transition-all duration-500 pointer-events-none ${showControls ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
@@ -970,12 +1053,24 @@ const LectureView: React.FC<LectureViewProps> = ({
                 >
                     <div className="flex items-center justify-between p-6 border-b border-white/5">
                         <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] italic">Course <span className="text-rose-600">Index</span></h3>
-                        <button 
-                            onClick={() => setIsMobileSidebarOpen(false)}
-                            className="lg:hidden size-8 rounded-full bg-white/5 flex items-center justify-center text-slate-500 hover:text-white"
-                        >
-                            <span className="material-symbols-outlined text-sm">close</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {isInstructor && onYoutubeImport && (
+                                <button 
+                                    onClick={onYoutubeImport}
+                                    className="px-3 py-1.5 rounded-lg bg-rose-600/10 border border-rose-600/20 text-rose-500 hover:bg-rose-500 hover:text-white transition-all text-[9px] font-black uppercase tracking-widest flex items-center gap-1 active:scale-95"
+                                    title="Import steps from YouTube"
+                                >
+                                    <span className="material-symbols-outlined text-[12px] font-bold">add</span>
+                                    Add Step
+                                </button>
+                            )}
+                            <button 
+                                onClick={() => setIsMobileSidebarOpen(false)}
+                                className="lg:hidden size-8 rounded-full bg-white/5 flex items-center justify-center text-slate-500 hover:text-white"
+                            >
+                                <span className="material-symbols-outlined text-sm">close</span>
+                            </button>
+                        </div>
                     </div>
                     
                     <div className="p-6 border-b border-white/5 py-4">

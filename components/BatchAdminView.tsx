@@ -99,7 +99,7 @@ const MarketplaceOpsTab: React.FC<{ batch: Batch, onUpdate: (updates: Partial<Ba
 };
 
 // Sub-component for Content Logistics
-const ContentLogisticsTab: React.FC<{ subjects: any[], setSubjects: any, onDeploy: (subs: any[]) => void }> = ({ subjects, setSubjects, onDeploy }) => {
+const ContentLogisticsTab: React.FC<{ subjects: any[], setSubjects: any, lectures?: any[], setLectures?: any, onDeploy: (subs: any[]) => void }> = ({ subjects, setSubjects, lectures, setLectures, onDeploy }) => {
     const [selectedSubIndex, setSelectedSubIndex] = useState<number | null>(null);
     const [selectedChapId, setSelectedChapId] = useState<string | null>(null);
     const [isEditingLecture, setIsEditingLecture] = useState<any>(null);
@@ -123,28 +123,56 @@ const ContentLogisticsTab: React.FC<{ subjects: any[], setSubjects: any, onDeplo
         }
     };
 
-    const addLecture = (subIdx: number, chapIdx: number) => {
+    const addLecture = (subIdx: number, chapIdx: number | null) => {
         const title = prompt("Enter Lecture Title:");
         if (title) {
             const newSubjects = [...subjects];
-            newSubjects[subIdx].chapters[chapIdx].lectures.push({ 
+            const newLec = { 
                 id: Math.random().toString(36).substr(2, 9), 
                 title, 
                 youtubeUrl: '', 
                 embedUrl: '', 
                 completed: false 
-            });
+            };
+            if (chapIdx === null) {
+                if (!newSubjects[subIdx].lectures) newSubjects[subIdx].lectures = [];
+                newSubjects[subIdx].lectures.push(newLec);
+            } else {
+                newSubjects[subIdx].chapters[chapIdx].lectures.push(newLec);
+            }
             setSubjects(newSubjects);
             onDeploy(newSubjects);
         }
     };
 
-    const removeLecture = (subIdx: number, chapIdx: number, lecIdx: number) => {
+    const removeLecture = (subIdx: number, chapIdx: number | null, lecIdx: number) => {
         if (confirm("Delete this lecture?")) {
             const newSubjects = [...subjects];
-            newSubjects[subIdx].chapters[chapIdx].lectures.splice(lecIdx, 1);
+            if (chapIdx === null) {
+                newSubjects[subIdx].lectures.splice(lecIdx, 1);
+            } else {
+                newSubjects[subIdx].chapters[chapIdx].lectures.splice(lecIdx, 1);
+            }
             setSubjects(newSubjects);
             onDeploy(newSubjects);
+        }
+    };
+
+    const addBatchLecture = () => {
+        const title = prompt("Enter Lecture Title:");
+        if (title && setLectures) {
+            const newLectures = [...(lectures || []), { id: Math.random().toString(36).substr(2, 9), title, youtubeUrl: '', embedUrl: '', completed: false }];
+            setLectures(newLectures);
+            onDeploy(subjects);
+        }
+    };
+
+    const removeBatchLecture = (idx: number) => {
+        if (confirm("Delete this lecture?") && setLectures) {
+            const newLectures = [...(lectures || [])];
+            newLectures.splice(idx, 1);
+            setLectures(newLectures);
+            onDeploy(subjects);
         }
     };
 
@@ -270,6 +298,31 @@ const ContentLogisticsTab: React.FC<{ subjects: any[], setSubjects: any, onDeplo
                 </div>
             </div>
 
+            <div className="space-y-4 border-b border-white/5 pb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 gap-2">
+                    <div>
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Batch Lectures (Flat Course)</span>
+                        <span className="text-[9px] text-slate-600 font-bold uppercase">Use this for courses without subjects/chapters</span>
+                    </div>
+                    <button onClick={addBatchLecture} className="text-emerald-500 font-black text-[10px] uppercase tracking-widest hover:brightness-125">+ Add Lecture</button>
+                </div>
+                <div className="space-y-2">
+                    {lectures?.map((lec: any, idx: number) => (
+                        <div key={lec.id} className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 flex items-center justify-between group hover:bg-white/[0.03] transition-all">
+                            <span className="text-xs font-bold text-white">{lec.title}</span>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setIsEditingLecture({ isBatch: true, lecIdx: idx, ...lec })} className="size-8 rounded-lg bg-white/5 hover:bg-blue-500 text-slate-500 hover:text-white transition-all flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-sm">edit</span>
+                                </button>
+                                <button onClick={() => removeBatchLecture(idx)} className="size-8 rounded-lg bg-white/5 hover:bg-rose-500 text-slate-500 hover:text-white transition-all flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-sm">delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Subjects Column */}
                 <div className="lg:col-span-4 space-y-4">
@@ -311,9 +364,13 @@ const ContentLogisticsTab: React.FC<{ subjects: any[], setSubjects: any, onDeplo
                 <div className="lg:col-span-4 space-y-4">
                     <div className="flex items-center justify-between px-2">
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Data Streams</span>
-                        {selectedChapId && <button onClick={() => {
-                            const cIdx = subjects[selectedSubIndex!].chapters.findIndex((c: any) => c.id === selectedChapId);
-                            addLecture(selectedSubIndex!, cIdx);
+                        {(selectedChapId || (selectedSubIndex !== null && !selectedChapId)) && <button onClick={() => {
+                            if (selectedChapId) {
+                                const cIdx = subjects[selectedSubIndex!].chapters.findIndex((c: any) => c.id === selectedChapId);
+                                addLecture(selectedSubIndex!, cIdx);
+                            } else {
+                                addLecture(selectedSubIndex!, null);
+                            }
                         }} className="text-emerald-500 font-black text-[10px] uppercase tracking-widest hover:brightness-125">+ Add Lecture</button>}
                     </div>
                     {selectedChapId ? (
@@ -333,6 +390,30 @@ const ContentLogisticsTab: React.FC<{ subjects: any[], setSubjects: any, onDeplo
                                                 <span className="material-symbols-outlined text-sm">edit</span>
                                             </button>
                                             <button onClick={() => removeLecture(selectedSubIndex!, subjects[selectedSubIndex!].chapters.findIndex((c: any) => c.id === selectedChapId), idx)} className="size-8 rounded-lg bg-white/5 hover:bg-rose-500 text-slate-500 hover:text-white transition-all flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-sm">delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : selectedSubIndex !== null ? (
+                        <div className="space-y-3">
+                            {subjects[selectedSubIndex!].lectures?.map((lec: any, idx: number) => (
+                                <div key={lec.id} className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 group hover:bg-white/[0.03] transition-all">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex-1">
+                                            <p className="text-xs font-bold text-white mb-1">{lec.title}</p>
+                                            <div className="flex items-center gap-2">
+                                                {lec.isDemo && <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest border border-emerald-500/20 px-1.5 py-0.5 rounded bg-emerald-500/5">Demo</span>}
+                                                {lec.notesPdfUrl && <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest border border-blue-500/20 px-1.5 py-0.5 rounded bg-blue-500/5">PDF</span>}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => setIsEditingLecture({ subIdx: selectedSubIndex!, chapIdx: null, lecIdx: idx, ...lec })} className="size-8 rounded-lg bg-white/5 hover:bg-blue-500 text-slate-500 hover:text-white transition-all flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-sm">edit</span>
+                                            </button>
+                                            <button onClick={() => removeLecture(selectedSubIndex!, null, idx)} className="size-8 rounded-lg bg-white/5 hover:bg-rose-500 text-slate-500 hover:text-white transition-all flex items-center justify-center">
                                                 <span className="material-symbols-outlined text-sm">delete</span>
                                             </button>
                                         </div>
@@ -376,13 +457,34 @@ const ContentLogisticsTab: React.FC<{ subjects: any[], setSubjects: any, onDeplo
                              </div>
                         </div>
                         <button onClick={() => {
-                                const newSubjects = [...subjects];
-                                const { subIdx, chapIdx, lecIdx, title, youtubeUrl, notesPdfUrl, isDemo, scheduledDate } = isEditingLecture;
-                                newSubjects[subIdx].chapters[chapIdx].lectures[lecIdx] = {
-                                    ...newSubjects[subIdx].chapters[chapIdx].lectures[lecIdx],
-                                    title, youtubeUrl, embedUrl: youtubeUrl, notesPdfUrl, isDemo, scheduledDate
-                                };
-                                setSubjects(newSubjects);
+                                const { isBatch, subIdx, chapIdx, lecIdx, title, youtubeUrl, notesPdfUrl, isDemo, scheduledDate } = isEditingLecture;
+                                if (isBatch) {
+                                    if (!setLectures) return;
+                                    const newLectures = [...(lectures || [])];
+                                    newLectures[lecIdx] = {
+                                        ...newLectures[lecIdx],
+                                        title, youtubeUrl, embedUrl: youtubeUrl, notesPdfUrl, isDemo, scheduledDate
+                                    };
+                                    setLectures(newLectures);
+                                    // Make sure to save these changes immediately
+                                    if (batch.id) {
+                                        onDeploy(subjects);
+                                    }
+                                } else {
+                                    const newSubjects = [...subjects];
+                                    if (chapIdx === null) {
+                                        newSubjects[subIdx].lectures[lecIdx] = {
+                                            ...newSubjects[subIdx].lectures[lecIdx],
+                                            title, youtubeUrl, embedUrl: youtubeUrl, notesPdfUrl, isDemo, scheduledDate
+                                        };
+                                    } else {
+                                        newSubjects[subIdx].chapters[chapIdx].lectures[lecIdx] = {
+                                            ...newSubjects[subIdx].chapters[chapIdx].lectures[lecIdx],
+                                            title, youtubeUrl, embedUrl: youtubeUrl, notesPdfUrl, isDemo, scheduledDate
+                                        };
+                                    }
+                                    setSubjects(newSubjects);
+                                }
                                 setIsEditingLecture(null);
                             }} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-xl transition-all shadow-xl">Update Node</button>
                     </div>
@@ -399,6 +501,7 @@ const BatchAdminView: React.FC<BatchAdminViewProps> = ({ batch, onBack, setLoadi
     const [notifBody, setNotifBody] = useState('');
     const [activeTab, setActiveTab] = useState<'command' | 'logistics' | 'marketing' | 'branding' | 'doubts' | 'analytics' | 'staff'>('command');
     const [subjects, setSubjects] = useState<any[]>(batch.subjects || []);
+    const [lectures, setLectures] = useState<any[] | undefined>(batch.lectures);
 
     useEffect(() => {
         if (batch.inviteCode) {
@@ -443,7 +546,9 @@ const BatchAdminView: React.FC<BatchAdminViewProps> = ({ batch, onBack, setLoadi
 
     const handleDeploy = async (newSubjects: any[]) => {
         try {
-            await onUpdateBatch(batch.id, { subjects: newSubjects });
+            const updates: any = { subjects: newSubjects };
+            if (lectures !== undefined) updates.lectures = lectures;
+            await onUpdateBatch(batch.id, updates);
         } catch (e) {
             console.error('Deploy failed:', e);
         }
@@ -526,7 +631,7 @@ const BatchAdminView: React.FC<BatchAdminViewProps> = ({ batch, onBack, setLoadi
                 )}
 
                 {activeTab === 'logistics' && (
-                    <ContentLogisticsTab subjects={subjects} setSubjects={setSubjects} onDeploy={handleDeploy} />
+                    <ContentLogisticsTab subjects={subjects} setSubjects={setSubjects} lectures={lectures} setLectures={setLectures} onDeploy={handleDeploy} />
                 )}
 
                 {activeTab === 'marketing' && (

@@ -117,13 +117,24 @@ const BatchLandingView: React.FC<BatchLandingViewProps> = ({ batch, currentUser,
     const requireApproval = batch.requireApproval === true;
 
     let totalLectures = 0;
-    batch.subjects.forEach(s => s.chapters.forEach(c => totalLectures += c.lectures.length));
+    if (batch.lectures) {
+        totalLectures = batch.lectures.length;
+    } else {
+        batch.subjects.forEach(s => {
+            if (s.lectures) { totalLectures += s.lectures.length; }
+            s.chapters.forEach(c => totalLectures += c.lectures.length);
+        });
+    }
 
-    // Collect demo lectures
     const demos: { title: string; url: string; subject: string }[] = [];
-    batch.subjects.forEach(s => s.chapters.forEach(c => c.lectures.forEach(l => {
-        if ((l.isDemo || l.isFreePreview) && l.youtubeUrl) demos.push({ title: l.title, url: l.youtubeUrl, subject: s.name });
-    })));
+    const pushDemo = (l: any, subName: string) => {
+        if ((l.isDemo || l.isFreePreview) && l.youtubeUrl) demos.push({ title: l.title, url: l.youtubeUrl, subject: subName });
+    };
+    batch.lectures?.forEach(l => pushDemo(l, batch.name));
+    batch.subjects.forEach(s => {
+        s.lectures?.forEach(l => pushDemo(l, s.name));
+        s.chapters.forEach(c => c.lectures.forEach(l => pushDemo(l, s.name)));
+    });
 
     return (
         <div className="blv">

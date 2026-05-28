@@ -74,11 +74,15 @@ const YoutubeImportView: React.FC<YoutubeImportViewProps> = ({ batches, initialB
             description: v.description
         }));
         
-        onImport(selectedBatchId, selectedSubjectId, selectedChapterId, selectedVideos);
+        const chapterId = isFlatBatch ? '_vchap' : isFlatSubject ? '_vchap' : selectedChapterId;
+        const subjectId = isFlatBatch ? '_vsub' : selectedSubjectId;
+        onImport(selectedBatchId, subjectId, chapterId, selectedVideos);
     };
 
     const selectedBatch = batches.find(b => b.id === selectedBatchId);
+    const isFlatBatch = selectedBatch?.lectures !== undefined;
     const selectedSubject = selectedBatch?.subjects.find(s => s.id === selectedSubjectId);
+    const isFlatSubject = selectedSubject?.lectures !== undefined;
 
     return (
         <main className="flex-1 flex flex-col h-full bg-black">
@@ -160,6 +164,7 @@ const YoutubeImportView: React.FC<YoutubeImportViewProps> = ({ batches, initialB
                                         </select>
                                         <span className="material-symbols-outlined absolute right-2 top-2.5 text-slate-600 pointer-events-none text-lg">expand_more</span>
                                     </div>
+                                    {!isFlatBatch && (
                                     <div className="relative">
                                         <select 
                                             disabled={!selectedBatchId}
@@ -175,6 +180,8 @@ const YoutubeImportView: React.FC<YoutubeImportViewProps> = ({ batches, initialB
                                         </select>
                                         <span className="material-symbols-outlined absolute right-2 top-2.5 text-slate-600 pointer-events-none text-lg">expand_more</span>
                                     </div>
+                                    )}
+                                    {!isFlatBatch && selectedSubjectId && !isFlatSubject && (
                                     <div className="relative">
                                         <select 
                                             disabled={!selectedSubjectId}
@@ -187,6 +194,7 @@ const YoutubeImportView: React.FC<YoutubeImportViewProps> = ({ batches, initialB
                                         </select>
                                         <span className="material-symbols-outlined absolute right-2 top-2.5 text-slate-600 pointer-events-none text-lg">expand_more</span>
                                     </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -273,7 +281,7 @@ const YoutubeImportView: React.FC<YoutubeImportViewProps> = ({ batches, initialB
                                     Cancel
                                 </button>
                                 <button 
-                                    disabled={selectedVideoIds.size === 0 || !selectedBatchId || !selectedSubjectId || !selectedChapterId}
+                                    disabled={selectedVideoIds.size === 0 || !selectedBatchId || (!isFlatBatch && !selectedSubjectId) || (!isFlatBatch && !isFlatSubject && selectedSubjectId && !selectedChapterId)}
                                     onClick={handleImportAction}
                                     className="px-10 py-3 bg-[var(--primary)] hover:bg-[var(--primary)]/90 text-white font-bold rounded-lg shadow-lg shadow-[var(--primary)]/20 flex items-center gap-2 transition-all disabled:opacity-50"
                                 >

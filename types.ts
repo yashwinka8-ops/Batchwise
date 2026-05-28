@@ -320,6 +320,7 @@ export interface Terminology {
   subjectPlural: string;
   chapterPlural: string;
   lecturePlural: string;
+  library: string;
 }
 
 export function getTerminology(genre?: string): Terminology {
@@ -333,6 +334,7 @@ export function getTerminology(genre?: string): Terminology {
         subjectPlural: 'Modules',
         chapterPlural: 'Lessons',
         lecturePlural: 'Steps',
+        library: 'Library',
       };
     case 'creative':
       return {
@@ -343,6 +345,7 @@ export function getTerminology(genre?: string): Terminology {
         subjectPlural: 'Phases',
         chapterPlural: 'Tasks',
         lecturePlural: 'Steps',
+        library: 'Library',
       };
     case 'study':
     default:
@@ -354,6 +357,7 @@ export function getTerminology(genre?: string): Terminology {
         subjectPlural: 'Subjects',
         chapterPlural: 'Chapters',
         lecturePlural: 'Lectures',
+        library: 'Library',
       };
   }
 }

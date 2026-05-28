@@ -69,6 +69,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [modal, setModal] = useState<ModalConfig | null>(null);
   const [createBatchGenre, setCreateBatchGenre] = useState<'study' | 'creative' | 'skill'>('skill');
+  const [createBatchStructure, setCreateBatchStructure] = useState<'hierarchical' | 'subject_flat' | 'batch_flat'>('hierarchical');
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
@@ -118,6 +119,7 @@ const App: React.FC = () => {
 
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [isMobileAdminMenuOpen, setIsMobileAdminMenuOpen] = useState(false);
+  const [isGoalWindowOpen, setIsGoalWindowOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark', 'night');
@@ -1097,9 +1099,27 @@ const App: React.FC = () => {
   };
 
   const activeBatch = data.find(b => b.id === activeBatchId);
-  const activeSubject = activeBatch?.subjects.find(s => s.id === activeSubjectId);
-  const activeChapter = activeSubject?.chapters.find(c => c.id === activeChapterId);
   const terms = getTerminology(activeBatch?.genre);
+  const activeSubject = (() => {
+    if (!activeBatch) return undefined;
+    if (activeSubjectId && activeBatch.subjects.some(s => s.id === activeSubjectId)) {
+      const sub = activeBatch.subjects.find(s => s.id === activeSubjectId)!;
+      if (sub.lectures) {
+        return { ...sub, chapters: [{ id: '_vchap', name: terms?.chapter || 'Lessons', lectures: sub.lectures }] };
+      }
+      return sub;
+    }
+    if (activeBatch.lectures && (!activeSubjectId || activeSubjectId.startsWith('_vsub'))) {
+      return {
+        id: activeSubjectId?.startsWith('_vsub') ? activeSubjectId : '_vsub',
+        name: terms?.subject || 'Course Content',
+        chapters: [{ id: '_vchap', name: terms?.chapter || 'Lessons', lectures: activeBatch.lectures }]
+      };
+    }
+    return undefined;
+  })();
+  const activeChapter = activeSubject?.chapters.find(c => c.id === activeChapterId || c.id === '_vchap');
+  const isFlatBatch = !!(activeBatch?.lectures);
 
   const getSubjectEmoji = (name: string): string => {
     const lowerName = name.toLowerCase();
@@ -1347,12 +1367,13 @@ const App: React.FC = () => {
 
   const handleCreateBatch = () => {
     setCreateBatchGenre('skill');
+    setCreateBatchStructure('hierarchical');
     setModal({
       type: 'create-batch',
       title: 'Create New Course',
       confirmLabel: 'Create',
       onConfirm: (payload) => {
-        const { name, genre } = payload;
+        const { name, genre, structure } = payload;
         if (typeof name !== 'string' || !name.trim()) return;
         const getTheme = (g: string) => {
           switch (g) {
@@ -1366,7 +1387,8 @@ const App: React.FC = () => {
           id: `b_${Date.now()}`,
           name,
           genre,
-          subjects: [],
+          subjects: structure === 'batch_flat' ? [] : [],
+          lectures: structure === 'batch_flat' ? [] : undefined,
           createdAt: Date.now(),
           isDirty: true,
           creatorId: user?.uid,
@@ -1375,7 +1397,7 @@ const App: React.FC = () => {
           theme
         };
         setData(prev => [...prev, newBatch]);
-        isInitialLoad.current = false; // Ensure this change triggers sync
+        isInitialLoad.current = false;
         setModal(null);
       }
     });
@@ -1671,39 +1693,56 @@ const App: React.FC = () => {
       onConfirm: (name) => {
         if (typeof name !== 'string' || !name.trim()) return;
         
-        // Context recovery: find the batch and subject that contains this chapter
         let targetBatchId = activeBatchId;
         let targetSubjectId = activeSubjectId;
         
-        if (!targetBatchId || !targetSubjectId) {
+        if (!targetBatchId) {
             for (const b of data) {
-                for (const s of b.subjects) {
-                    if (s.chapters.some(c => c.id === chapterId)) {
-                        targetBatchId = b.id;
-                        targetSubjectId = s.id;
-                        break;
-                    }
+                if (b.lectures || b.subjects.some(s => s.lectures || s.chapters.some(c => c.id === chapterId))) {
+                    targetBatchId = b.id;
+                    break;
                 }
-                if (targetBatchId) break;
             }
         }
 
-        if (!targetBatchId || !targetSubjectId) {
+        if (!targetBatchId) {
             alert("Context loss detected. Unable to identify target node cluster.");
             return;
         }
 
+        const newLecture = { id: `l_${Date.now()}`, title: name, youtubeUrl: '', embedUrl: '', completed: false };
         setData(prev => prev.map(b => b.id === targetBatchId ? {
           ...b,
           isDirty: true,
-          subjects: b.subjects.map(s => s.id === targetSubjectId ? {
-            ...s,
-            chapters: s.chapters.map(c => c.id === chapterId ? {
-              ...c,
-              lectures: [...c.lectures, { id: `l_${Date.now()}`, title: name, youtubeUrl: '', embedUrl: '', completed: false }]
-            } : c)
-          } : s)
+          lectures: (chapterId === '_batch' || (chapterId === '_vchap' && b.lectures)) ? [...(b.lectures || []), newLecture] : b.lectures,
+          subjects: b.subjects.map(s => {
+            if (targetSubjectId && s.id === targetSubjectId) {
+              if (chapterId === '_vchap_sub' || (chapterId === '_vchap' && s.lectures)) {
+                return { ...s, lectures: [...(s.lectures || []), newLecture] };
+              }
+              return {
+                ...s,
+                chapters: s.chapters.map(c => c.id === chapterId ? {
+                  ...c,
+                  lectures: [...c.lectures, newLecture]
+                } : c)
+              };
+            }
+            return s;
+          })
         } : b));
+        
+        if (chapterId === '_batch' && targetBatchId) {
+            setActiveSubjectId('_vsub');
+            setActiveChapterId('_vchap');
+            setViewMode(ViewMode.LECTURES);
+            navigate(`/batch/${targetBatchId}/subject/_vsub/chapter/_vchap`);
+        } else if (chapterId === '_vchap_sub' && targetBatchId && targetSubjectId) {
+            setActiveChapterId('_vchap');
+            setViewMode(ViewMode.LECTURES);
+            navigate(`/batch/${targetBatchId}/subject/${targetSubjectId}/chapter/_vchap`);
+        }
+
         setModal(null);
       }
     });
@@ -1782,13 +1821,22 @@ const App: React.FC = () => {
           setData(prev => prev.map(b => b.id === activeBatchId ? {
             ...b,
             isDirty: true,
-            subjects: b.subjects.map(s => s.id === activeSubjectId ? {
-              ...s,
-              chapters: s.chapters.map(c => c.id === chapterId ? {
-                ...c,
-                lectures: [...c.lectures, ...newLectures]
-              } : c)
-            } : s)
+            lectures: chapterId === '_vchap' && b.lectures ? [...(b.lectures || []), ...newLectures] : b.lectures,
+            subjects: b.subjects.map(s => {
+              if ((chapterId === '_vchap' || !activeSubjectId) && s.lectures) {
+                return { ...s, lectures: [...(s.lectures || []), ...newLectures] };
+              }
+              if (s.id === activeSubjectId) {
+                return {
+                  ...s,
+                  chapters: s.chapters.map(c => c.id === chapterId ? {
+                    ...c,
+                    lectures: [...c.lectures, ...newLectures]
+                  } : c)
+                };
+              }
+              return s;
+            })
           } : b));
 
           alert(`Successfully imported ${newLectures.length} lectures from CSV!`);
@@ -1845,7 +1893,9 @@ const App: React.FC = () => {
         const currentBatch = prev.find(pb => pb.id === activeBatchId);
         const currentSubject = currentBatch?.subjects.find(s => s.id === activeSubjectId);
         const currentChapter = currentSubject?.chapters.find(c => c.id === activeChapterId);
-        const lecture = currentChapter?.lectures.find(l => l.id === lectureId);
+        const lecture = currentChapter?.lectures.find(l => l.id === lectureId)
+          || currentSubject?.lectures?.find(l => l.id === lectureId)
+          || currentBatch?.lectures?.find(l => l.id === lectureId);
         
         if (!lecture) return b.sessions;
         
@@ -1855,7 +1905,7 @@ const App: React.FC = () => {
             lectureId,
             lectureTitle: lecture.title,
             subjectName: currentSubject?.name || 'General',
-            duration: lecture.duration || 2700, // 45 min default
+            duration: lecture.duration || 2700,
             timestamp: Date.now()
           };
           return [...(b.sessions || []), newSession];
@@ -1863,45 +1913,42 @@ const App: React.FC = () => {
           return (b.sessions || []).filter(s => s.lectureId !== lectureId);
         }
       })(),
+      lectures: b.lectures?.map(l => l.id === lectureId ? toggleLectureObj(l) : l),
       subjects: b.subjects.map(s => s.id === activeSubjectId ? {
         ...s,
+        lectures: s.lectures?.map(l => l.id === lectureId ? toggleLectureObj(l) : l),
         chapters: s.chapters.map(c => c.id === activeChapterId ? {
           ...c,
-          lectures: c.lectures.map(l => {
-            if (l.id === lectureId) {
-              const newCompleted = !l.completed;
-              let revisions = l.revisions;
-              if (newCompleted) {
-                // Initialize Spaced Repetition (D1, D3, D7, D15, D30)
-                const now = new Date();
-                revisions = [1, 3, 7, 15, 30].map(days => {
-                  const dueDate = new Date(now);
-                  dueDate.setDate(now.getDate() + days);
-                  return { day: days, dueDate: dueDate.toISOString().split('T')[0], completed: false };
-                });
-              } else {
-                revisions = undefined;
-              }
-              return { 
-                ...l, 
-                completed: newCompleted, 
-                completedAt: newCompleted ? Date.now() : undefined,
-                revisions 
-              };
-            }
-            return l;
-          })
+          lectures: c.lectures.map(l => l.id === lectureId ? toggleLectureObj(l) : l)
         } : c)
       } : s)
     } : b));
+  };
+
+  const toggleLectureObj = (l: Lecture) => {
+    const newCompleted = !l.completed;
+    let revisions = l.revisions;
+    if (newCompleted) {
+      const now = new Date();
+      revisions = [1, 3, 7, 15, 30].map(days => {
+        const dueDate = new Date(now);
+        dueDate.setDate(now.getDate() + days);
+        return { day: days, dueDate: dueDate.toISOString().split('T')[0], completed: false };
+      });
+    } else {
+      revisions = undefined;
+    }
+    return { ...l, completed: newCompleted, completedAt: newCompleted ? Date.now() : undefined, revisions };
   };
 
   const handleDeleteLecture = (lectureId: string) => {
     setData(prev => prev.map(b => b.id === activeBatchId ? {
       ...b,
       isDirty: true,
+      lectures: b.lectures?.filter(l => l.id !== lectureId),
       subjects: b.subjects.map(s => s.id === activeSubjectId ? {
         ...s,
+        lectures: s.lectures?.filter(l => l.id !== lectureId),
         chapters: s.chapters.map(c => c.id === activeChapterId ? {
           ...c,
           lectures: c.lectures.filter(l => l.id !== lectureId)
@@ -1915,8 +1962,10 @@ const App: React.FC = () => {
     setData(prev => prev.map(b => b.id === activeBatchId ? {
       ...b,
       isDirty: true,
+      lectures: b.lectures?.map(l => l.id === lectureId ? { ...l, scheduledDate: today } : l),
       subjects: b.subjects.map(s => s.id === activeSubjectId ? {
         ...s,
+        lectures: s.lectures?.map(l => l.id === lectureId ? { ...l, scheduledDate: today } : l),
         chapters: s.chapters.map(c => c.id === activeChapterId ? {
           ...c,
           lectures: c.lectures.map(l => l.id === lectureId ? { ...l, scheduledDate: today } : l)
@@ -1936,9 +1985,15 @@ const App: React.FC = () => {
 
     // Find the lecture data
     let foundLecture: Lecture | null = null;
-    data.forEach(b => b.subjects.forEach(s => s.chapters.forEach(c => c.lectures.forEach(l => {
-      if (l.id === maximizedLectureId) foundLecture = l;
-    }))));
+    data.forEach(b => {
+      b.lectures?.forEach(l => { if (l.id === maximizedLectureId) foundLecture = l; });
+      b.subjects.forEach(s => {
+        s.lectures?.forEach(l => { if (l.id === maximizedLectureId) foundLecture = l; });
+        s.chapters.forEach(c => c.lectures.forEach(l => {
+          if (l.id === maximizedLectureId) foundLecture = l;
+        }));
+      });
+    });
 
     if (!foundLecture) return null;
 
@@ -3577,6 +3632,13 @@ const App: React.FC = () => {
                     </div>
                   );
                 })()}
+                <button 
+                  onClick={() => setIsGoalWindowOpen(true)} 
+                  className="size-10 flex items-center justify-center text-slate-400 relative hover:text-white transition-colors"
+                  title="Learning Goals"
+                >
+                  <span className="material-symbols-outlined text-[20px]">flag</span>
+                </button>
                 <div className="relative">
                   <button 
                     onClick={() => {
@@ -3713,7 +3775,10 @@ const App: React.FC = () => {
                   <button onClick={() => setIsInfoOpen(true)} className="text-slate-500 hover:text-white transition-colors" title="Documentation">
                     <span className="material-symbols-outlined text-[20px]">help_outline</span>
                   </button>
-                  <button onClick={() => setIsAnalyticsOpen(true)} className="text-slate-500 hover:text-white transition-colors">
+                  <button onClick={() => setIsGoalWindowOpen(true)} className="text-slate-500 hover:text-white transition-colors" title="Learning Goals">
+                    <span className="material-symbols-outlined text-[20px]">flag</span>
+                  </button>
+                  <button onClick={() => setIsAnalyticsOpen(true)} className="text-slate-500 hover:text-white transition-colors" title="Analytics">
                     <span className="material-symbols-outlined text-[20px]">bar_chart</span>
                   </button>
                   <button 
@@ -3821,18 +3886,17 @@ const App: React.FC = () => {
                        )}
                      </div>
 
-                    <div className="mb-8">
-                      <GoalDashboard userId={user?.uid || ''} completedCount={calculateAnalytics().completedLectures} />
-                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                         {data.map((batch) => {
-                            const total = batch.subjects.reduce((acc, s) => acc + s.chapters.reduce((a, c) => a + c.lectures.length, 0), 0);
-                            const done = batch.subjects.reduce((acc, s) => acc + s.chapters.reduce((a, c) => a + c.lectures.filter(l => l.completed).length, 0), 0);
+                            const batchLectures = batch.lectures || [];
+                            const total = batchLectures.length > 0 ? batchLectures.length : batch.subjects.reduce((acc, s) => acc + s.chapters.reduce((a, c) => a + c.lectures.length, 0), 0);
+                            const done = batchLectures.length > 0 ? batchLectures.filter(l => l.completed).length : batch.subjects.reduce((acc, s) => acc + s.chapters.reduce((a, c) => a + c.lectures.filter(l => l.completed).length, 0), 0);
                             const perc = total === 0 ? 0 : Math.round((done / total) * 100);
                             const subjectCount = batch.subjects.length;
                             const terms = getTerminology(batch.genre);
                             return (
-                              <div key={batch.id} className="rounded-2xl border border-white/5 bg-white/[0.02] hover:border-[var(--primary)]/30 transition-all cursor-pointer group hover:-translate-y-1 duration-300 relative overflow-hidden" onClick={() => { setActiveBatchId(batch.id); setViewMode(ViewMode.SUBJECTS); navigate(`/batch/${batch.id}`); }}>
+                              <div key={batch.id} className="rounded-2xl border border-white/5 bg-white/[0.02] hover:border-[var(--primary)]/30 transition-all cursor-pointer group hover:-translate-y-1 duration-300 relative overflow-hidden" onClick={() => { setActiveBatchId(batch.id); if (batch.lectures) { setActiveSubjectId('_vsub'); setActiveChapterId('_vchap'); setViewMode(ViewMode.LECTURES); navigate(`/batch/${batch.id}/subject/_vsub/chapter/_vchap`); } else { setViewMode(ViewMode.SUBJECTS); navigate(`/batch/${batch.id}`); } }}>
                                 {/* Banner */}
                                 <div className="relative h-40 bg-slate-900 overflow-hidden">
                                   {batch.theme?.coverImage ? (
@@ -3843,6 +3907,7 @@ const App: React.FC = () => {
                                     </div>
                                   )}
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                  <div className="absolute inset-x-0 bottom-0 h-16 backdrop-blur-[6px] pointer-events-none" style={{ WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))', maskImage: 'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))' }} />
                                   {/* Progress badge */}
                                   <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest bg-black/40 backdrop-blur-sm" style={{ color: perc === 100 ? '#22c55e' : 'var(--primary)' }}>
                                     {perc}%
@@ -3939,7 +4004,7 @@ const App: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {activeBatch.subjects.map((subject, index) => (
-                    <div key={subject.id} onClick={() => navigate(`/batch/${activeBatch.id}/subject/${subject.id}`)} className="glass-card rounded-2xl border-white/5 hover:border-rose-500/30 p-4 transition-all group cursor-pointer flex flex-col relative hover:-translate-y-1 duration-300">
+                    <div key={subject.id} onClick={() => { if (subject.lectures) { setActiveChapterId('_vchap'); setViewMode(ViewMode.LECTURES); navigate(`/batch/${activeBatch.id}/subject/${subject.id}/chapter/_vchap`); } else { navigate(`/batch/${activeBatch.id}/subject/${subject.id}`); } }} className="glass-card rounded-2xl border-white/5 hover:border-rose-500/30 p-4 transition-all group cursor-pointer flex flex-col relative hover:-translate-y-1 duration-300">
                       <div className="flex justify-between items-start mb-4">
                         <div className="size-10 rounded-xl bg-[var(--primary)]/10 flex items-center justify-center text-[var(--primary)] group-hover:scale-110 transition-transform">
                           <span className="text-lg font-bold">{getSubjectEmoji(subject.name)}</span>
@@ -3951,7 +4016,9 @@ const App: React.FC = () => {
                       </div>
                       <h3 className="text-base font-bold text-white mb-2">{subject.name}</h3>
                       <div className="flex items-center gap-2 mb-4">
-                        <div className="px-2 py-0.5 rounded bg-white/5 text-[9px] font-black text-slate-500 uppercase tracking-widest border border-white/5">{subject.chapters.length} {subject.chapters.length === 1 ? terms.chapter : terms.chapters}</div>
+                        <div className="px-2 py-0.5 rounded bg-white/5 text-[9px] font-black text-slate-500 uppercase tracking-widest border border-white/5">
+                          {subject.lectures ? `${subject.lectures.length} ${subject.lectures.length === 1 ? terms.lecture : terms.lecturePlural}` : `${subject.chapters.length} ${subject.chapters.length === 1 ? terms.chapter : terms.chapters}`}
+                        </div>
                       </div>
                       <div className="mt-auto pt-4 border-t border-white/5 flex justify-between items-center">
                         <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Enter {terms.subject}</span>
@@ -3964,10 +4031,8 @@ const App: React.FC = () => {
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Add {terms.subject}</span>
                   </button>
                 </div>
-          </section>
-        )}
-
-
+              </section>
+            )}
 
             {viewMode === ViewMode.CHAPTERS && activeBatch && activeSubject && (
               <section className="animate-apple pt-4">
@@ -4061,8 +4126,14 @@ const App: React.FC = () => {
                 }}
                 isEnrolled={data.some(b => b.inviteCode === (selectedMarketplaceBatch.inviteCode || selectedMarketplaceBatch.id) || b.id === selectedMarketplaceBatch.id)}
                 onProceed={() => {
-                  setActiveBatchId(data.find(b => b.inviteCode === (selectedMarketplaceBatch.inviteCode || selectedMarketplaceBatch.id) || b.id === selectedMarketplaceBatch.id)?.id || null);
-                  setViewMode(ViewMode.SUBJECTS);
+                  const foundId = data.find(b => b.inviteCode === (selectedMarketplaceBatch.inviteCode || selectedMarketplaceBatch.id) || b.id === selectedMarketplaceBatch.id)?.id;
+                  setActiveBatchId(foundId);
+                  if (selectedMarketplaceBatch.lectures) {
+                    setActiveSubjectId('_vsub'); setActiveChapterId('_vchap');
+                    setViewMode(ViewMode.LECTURES);
+                  } else {
+                    setViewMode(ViewMode.SUBJECTS);
+                  }
                 }}
                 onBack={() => {
                   const isAlreadyInLibrary = data.some(b => b.inviteCode === (selectedMarketplaceBatch.inviteCode || selectedMarketplaceBatch.id) || b.id === selectedMarketplaceBatch.id);
@@ -4100,21 +4171,30 @@ const App: React.FC = () => {
                   setData(prev => prev.map(b => b.id === bId ? {
                     ...b,
                     isDirty: true,
-                    subjects: b.subjects.map(s => s.id === sId ? {
-                      ...s,
-                      chapters: s.chapters.map(c => c.id === cId ? {
-                        ...c,
-                        lectures: [...c.lectures, ...newLectures]
-                      } : c)
-                    } : s)
+                    lectures: cId === '_vchap' && b.lectures ? [...(b.lectures || []), ...newLectures] : b.lectures,
+                    subjects: b.subjects.map(s => {
+                      if (s.id === sId) {
+                        if (cId === '_vchap' && s.lectures) {
+                          return { ...s, lectures: [...(s.lectures || []), ...newLectures] };
+                        }
+                        return {
+                          ...s,
+                          chapters: s.chapters.map(c => c.id === cId ? {
+                            ...c,
+                            lectures: [...c.lectures, ...newLectures]
+                          } : c)
+                        };
+                      }
+                      return s;
+                    })
                   } : b));
                   setViewMode(ViewMode.LECTURES);
                   setActiveBatchId(bId);
-                  setActiveSubjectId(sId);
-                  setActiveChapterId(cId);
+                  setActiveSubjectId(sId ?? '_vsub');
+                  setActiveChapterId(cId ?? '_vchap');
                   alert(`Imported ${videos.length} sessions.`);
                 }}
-                onBack={() => setViewMode(ViewMode.CHAPTERS)}
+                onBack={() => { if (isFlatBatch) { setViewMode(ViewMode.BATCHES); } else { setViewMode(ViewMode.CHAPTERS); } }}
               />
             )}
 
@@ -4141,13 +4221,22 @@ const App: React.FC = () => {
                     setData(prev => prev.map(b => b.id === activeBatchId ? {
                       ...b,
                       isDirty: true,
-                      subjects: b.subjects.map(s => s.id === activeSubjectId ? {
-                        ...s,
-                        chapters: s.chapters.map(c => c.id === activeChapterId ? {
-                          ...c,
-                          lectures: [...c.lectures, ...newLectures]
-                        } : c)
-                      } : s)
+                      lectures: activeChapterId === '_vchap' && b.lectures ? [...(b.lectures || []), ...newLectures] : b.lectures,
+                      subjects: b.subjects.map(s => {
+                        if (s.id === activeSubjectId) {
+                          if (activeChapterId === '_vchap' && s.lectures) {
+                            return { ...s, lectures: [...(s.lectures || []), ...newLectures] };
+                          }
+                          return {
+                            ...s,
+                            chapters: s.chapters.map(c => c.id === activeChapterId ? {
+                              ...c,
+                              lectures: [...c.lectures, ...newLectures]
+                            } : c)
+                          };
+                        }
+                        return s;
+                      })
                     } : b));
                     alert(`Added ${videos.length} sessions to curriculum node.`);
                   }}
@@ -4196,10 +4285,15 @@ const App: React.FC = () => {
               }}
               onToggleComplete={(lId) => toggleLecture(lId)}
               onBack={() => {
-                setViewMode(ViewMode.CHAPTERS);
-                navigate(`/batch/${activeBatchId}/subject/${activeSubjectId}`);
+                if (isFlatBatch) { setViewMode(ViewMode.BATCHES); navigate('/'); }
+                else if (activeSubject?.lectures) { setViewMode(ViewMode.SUBJECTS); navigate(`/batch/${activeBatchId}`); }
+                else { setViewMode(ViewMode.CHAPTERS); navigate(`/batch/${activeBatchId}/subject/${activeSubjectId}`); }
               }}
               genre={activeBatch?.genre}
+              onYoutubeImport={() => {
+                setViewMode(ViewMode.YOUTUBE_IMPORT);
+                navigate(`/youtube-import?batch=${activeBatchId}&subject=${activeSubjectId}&chapter=${activeChapter.id}`);
+              }}
             />
           </div>
         ) : (
@@ -4210,8 +4304,11 @@ const App: React.FC = () => {
             <h3 className="text-xl font-bold text-white mb-2">No {terms.lecturePlural} Found</h3>
             <p className="text-slate-400 text-sm mb-6 text-center max-w-sm">This {terms.chapter.toLowerCase()} has no {terms.lecturePlural.toLowerCase()} yet. Add one below.</p>
             <div className="flex gap-4">
-              <button onClick={() => handleAddLecture(activeChapter.id)} className="bg-[var(--primary)] text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-lg shadow-[var(--primary)]/20">Add {terms.lecture}</button>
-              <button onClick={() => { setViewMode(ViewMode.CHAPTERS); navigate(`/batch/${activeBatchId}/subject/${activeSubjectId}`); }} className="bg-white/5 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-white/10 transition-colors border border-white/5">← Back</button>
+              <button onClick={() => {
+                setViewMode(ViewMode.YOUTUBE_IMPORT);
+                navigate(`/youtube-import?batch=${activeBatchId || ''}&subject=${activeSubjectId || ''}&chapter=${activeChapter.id}`);
+              }} className="bg-[var(--primary)] text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-lg shadow-[var(--primary)]/20">Add {terms.lecture}</button>
+              <button onClick={() => { if (isFlatBatch) { setViewMode(ViewMode.BATCHES); navigate('/'); } else if (activeSubject?.lectures) { setViewMode(ViewMode.SUBJECTS); navigate(`/batch/${activeBatchId}`); } else { setViewMode(ViewMode.CHAPTERS); navigate(`/batch/${activeBatchId}/subject/${activeSubjectId}`); } }} className="bg-white/5 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-white/10 transition-colors border border-white/5">← Back</button>
             </div>
           </div>
         );
@@ -4266,8 +4363,9 @@ const App: React.FC = () => {
               }}
               onToggleComplete={(lId) => toggleLecture(lId)}
               onBack={() => {
-                setViewMode(ViewMode.CHAPTERS);
-                navigate(`/batch/${activeBatchId}/subject/${activeSubjectId}`);
+                if (isFlatBatch) { setViewMode(ViewMode.BATCHES); navigate('/'); }
+                else if (activeSubject?.lectures) { setViewMode(ViewMode.SUBJECTS); navigate(`/batch/${activeBatchId}`); }
+                else { setViewMode(ViewMode.CHAPTERS); navigate(`/batch/${activeBatchId}/subject/${activeSubjectId}`); }
               }}
               onAddLecture={() => handleAddLecture(activeChapter.id)}
               onYoutubeImport={() => {
@@ -4282,6 +4380,31 @@ const App: React.FC = () => {
       {isPrivacyOpen && <PrivacyPolicyModal />}
       {isDisclaimerOpen && <DisclaimerModal />}
       {isInfoOpen && <InformationModal onClose={() => setIsInfoOpen(false)} />}
+      {isGoalWindowOpen && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-2xl animate-apple" onClick={() => setIsGoalWindowOpen(false)}>
+          <div className="glass-card w-full max-w-xl rounded-[3rem] border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)] relative overflow-hidden flex flex-col bg-slate-950/40" onClick={e => e.stopPropagation()}>
+            {/* Motion Graphic Header Decorative */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500"></div>
+            <div className="absolute -top-24 -right-24 size-64 bg-emerald-500/10 blur-[100px] rounded-full animate-pulse"></div>
+
+            <div className="p-8 pb-4 flex justify-between items-center relative z-10">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="material-symbols-outlined text-emerald-500 text-sm">flag</span>
+                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">Learning Target Protocols</span>
+                </div>
+                <h3 className="text-3xl font-black tracking-tighter text-white">Learning <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500">Goals</span></h3>
+              </div>
+              <button onClick={() => setIsGoalWindowOpen(false)} className="size-12 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all group active:scale-90">
+                <XIcon size={24} className="group-hover:rotate-90 transition-transform" />
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto max-h-[70vh] custom-scrollbar relative z-10">
+              <GoalDashboard userId={user?.uid || ''} completedCount={calculateAnalytics().completedLectures} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {isShareSettingsOpen && activeBatchId && (
         <ShareSettingsModal
@@ -4393,6 +4516,26 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 </div>
+                <div className="mt-6">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--apple-text-secondary)] mb-3 block">Choose Curriculum Structure</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { key: 'hierarchical', icon: '📂', label: 'Subjects → Chapters → Lectures', desc: 'Full hierarchy for academic courses' },
+                      { key: 'subject_flat', icon: '📁', label: 'Subjects → Lectures', desc: 'Subjects with direct lessons, no chapters' },
+                      { key: 'batch_flat', icon: '📄', label: 'Direct Lectures', desc: 'Flat list of lectures, no subjects or chapters' },
+                    ].map(opt => (
+                      <div key={opt.key} onClick={() => setCreateBatchStructure(opt.key as any)} className={`cursor-pointer rounded-xl p-4 border-2 transition-all duration-300 ${
+                        createBatchStructure === opt.key
+                          ? 'border-emerald-500 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                          : 'border-white/5 bg-white/5 hover:border-white/10'
+                      }`}>
+                        <div className="text-xl mb-2">{opt.icon}</div>
+                        <h4 className="font-bold text-xs text-[var(--apple-text)] leading-tight mb-1">{opt.label}</h4>
+                        <p className="text-[9px] text-[var(--apple-text-secondary)] leading-relaxed">{opt.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
             {(modal.type === 'add-lecture') && (
@@ -4441,7 +4584,7 @@ const App: React.FC = () => {
                     alert('Please enter a name.');
                     return;
                   }
-                  modal.onConfirm({ name: createBatchName, genre: createBatchGenre });
+                  modal.onConfirm({ name: createBatchName, genre: createBatchGenre, structure: createBatchStructure });
                 }
                 else if (modal.type === 'import-playlist') {
                   modal.onConfirm({ url });
@@ -4736,67 +4879,6 @@ const App: React.FC = () => {
           onClose={() => setCertificateTargetBatchId(null)}
         />
       )}
-
-      {/* AI Command Nexus - God Mode */}
-      <div className="fixed bottom-8 right-8 z-[1000] flex flex-col items-end gap-4">
-        {isAINexusOpen && (
-          <div className="w-80 glass-card rounded-[2.5rem] border-white/20 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="p-6 bg-gradient-to-br from-indigo-600/20 to-purple-600/20">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="size-10 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400">
-                  <span className="material-symbols-outlined animate-spin-slow">auto_awesome</span>
-                </div>
-                <div>
-                  <h3 className="text-xs font-black text-white uppercase tracking-widest">AI Sovereign</h3>
-                  <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-tighter">Full System Access</p>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <textarea 
-                  value={aiCommand}
-                  onChange={(e) => setAiCommand(e.target.value)}
-                  placeholder="Execute system command..."
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 transition-all resize-none"
-                  rows={3}
-                />
-                
-                {aiResponse && (
-                  <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <p className="text-xs text-indigo-300 leading-relaxed font-medium">{aiResponse}</p>
-                  </div>
-                )}
-                
-                {nexusReasoning && !aiResponse && (
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 animate-in fade-in zoom-in duration-300">
-                    <p className="text-[9px] text-emerald-400 leading-relaxed italic">{nexusReasoning}</p>
-                  </div>
-                )}
-
-                <button 
-                  onClick={handleGlobalAICommand}
-                  disabled={isExecutingCommand || !aiCommand.trim()}
-                  className="w-full py-3 rounded-2xl bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  {isExecutingCommand ? 'Executing...' : 'Invoke Mutation'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <button 
-          onClick={() => setIsAINexusOpen(!isAINexusOpen)}
-          className={`size-16 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-90 ${isAINexusOpen ? 'bg-rose-500 rotate-45' : 'bg-indigo-600 hover:scale-110'}`}
-        >
-          <span className="material-symbols-outlined text-white text-3xl">
-            {isAINexusOpen ? 'close' : 'bolt'}
-          </span>
-          {!isAINexusOpen && (
-            <div className="absolute inset-0 rounded-full animate-ping bg-indigo-400/20"></div>
-          )}
-        </button>
-      </div>
     </div>
   );
 };

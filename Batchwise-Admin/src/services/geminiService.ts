@@ -6,8 +6,8 @@ import { GoogleGenAI, Type } from "@google/genai";
  * Uses gemini-3-pro-preview for superior reasoning in STEM subjects.
  */
 export const suggestLectures = async (subject: string): Promise<string[]> => {
-  // Always initialize with apiKey from process.env.API_KEY using named parameter.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
   
   try {
     const response = await ai.models.generateContent({

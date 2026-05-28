@@ -9,29 +9,10 @@ interface IconProps {
 }
 
 export const BatchWiseLogo: React.FC<{ className?: string }> = ({ className }) => (
-  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="var(--primary)" />
-        <stop offset="100%" stopColor="#8b0000" />
-      </linearGradient>
-      <filter id="logo-glow" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="blur" />
-        <feFlood floodColor="var(--primary)" floodOpacity="0.4" result="color" />
-        <feComposite in="color" in2="blur" operator="in" result="glow" />
-        <feMerge>
-          <feMergeNode in="glow" />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
-      </filter>
-    </defs>
-    <g filter="url(#logo-glow)">
-      <path d="M32 20 V80 H40 V45 L62 20 H32Z" fill="currentColor" className="text-white" />
-      <path d="M32 80 L50 55 H42 L58 35 L52 50 H60 L40 80 Z" fill="url(#logo-grad)" />
-      <path d="M40 80 H60 C75 80 75 50 60 50 H55 L40 70 V80Z" fill="currentColor" className="text-white" />
-      <path d="M60 20 C70 20 75 35 65 45 L58 35 L62 20 H60Z" fill="currentColor" className="text-white opacity-80" />
-    </g>
-  </svg>
+  <>
+    <img src="/logo-light.png" className={`${className || ''} logo-light-theme`} alt="Logo" />
+    <img src="/logo-dark.png" className={`${className || ''} logo-dark-theme`} alt="Logo" />
+  </>
 );
 
 export const OldBatchWiseLogo: React.FC<{ className?: string }> = ({ className }) => (
