@@ -3907,7 +3907,6 @@ const App: React.FC = () => {
                                     </div>
                                   )}
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                                  <div className="absolute inset-x-0 bottom-0 h-16 backdrop-blur-[6px] pointer-events-none" style={{ WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))', maskImage: 'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))' }} />
                                   {/* Progress badge */}
                                   <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest bg-black/40 backdrop-blur-sm" style={{ color: perc === 100 ? '#22c55e' : 'var(--primary)' }}>
                                     {perc}%
